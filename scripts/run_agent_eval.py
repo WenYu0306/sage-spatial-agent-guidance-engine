@@ -17,8 +17,8 @@ from pathlib import Path
 
 import psycopg
 import yaml
-from knowledge_rag.provider import ProviderConfig
 from knowledge_rag.retrieval import retrieve
+from platform_core.llm import ProviderConfig
 
 REPO = Path(__file__).resolve().parents[1]
 META_KEYS = {"出处", "路线", "列表"}

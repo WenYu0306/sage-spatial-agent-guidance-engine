@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from knowledge_rag.provider import (
+from platform_core.llm import (
     DailyLimitError,
     LLMProvider,
     MockProvider,
@@ -46,7 +46,7 @@ def test_daily_limit_enforced(monkeypatch):
 
 def test_make_provider_falls_back_to_mock_without_key(monkeypatch):
     monkeypatch.delenv("LLM_API_KEY", raising=False)
-    mp = __import__("knowledge_rag.provider", fromlist=["make_provider"]).make_provider()
+    mp = __import__("platform_core.llm", fromlist=["make_provider"]).make_provider()
     assert isinstance(mp, MockProvider)
 
 
@@ -73,7 +73,7 @@ def test_openai_provider_embed_calls_sdk(monkeypatch):
             return R()
 
     p._embed_client = type("C", (), {"embeddings": FakeEmbeddings()})()
-    p.counter = __import__("knowledge_rag.provider", fromlist=["_DailyCounter"])._DailyCounter()
+    p.counter = __import__("platform_core.llm", fromlist=["_DailyCounter"])._DailyCounter()
 
     vecs = p.embed(["hello", "world"])
     assert calls["model"] == cfg.embedding_model

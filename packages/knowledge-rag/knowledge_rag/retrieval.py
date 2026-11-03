@@ -12,7 +12,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 
-from .provider import DailyLimitError, ProviderUnavailableError, make_provider
+from platform_core.llm import DailyLimitError, ProviderUnavailableError, make_provider
 
 TOP_K = 20
 FINAL_K = 5

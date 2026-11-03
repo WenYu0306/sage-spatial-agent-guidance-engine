@@ -43,12 +43,14 @@ source_modules = [
 forbidden_modules = ["content_service", "analytics_service"]
 
 # 模块独立性（ARCHITECTURE 4.1 第 3 条）：跨包只走 M0 契约（HTTP/事件），
-# 禁止 import 其他模块的 Python 实现；api-contract 生成的共享类型除外（暂无）
+# 禁止 import 其他模块的 Python 实现。
+# L0 基础层（platform_core 与 api-contract）不在本契约内：全仓共享地基，各包可
+# import（D-018）；LLMProvider 抽象随 M5 移入 platform_core.llm。
 [[tool.importlinter.contracts]]
 name = "模块间禁止互相 import"
 type = "independence"
 modules = [
-    "platform_core", "spatial_model", "route_engine", "agent_orchestrator",
+    "spatial_model", "route_engine", "agent_orchestrator",
     "knowledge_rag", "recommender", "voice_adapter", "avatar_adapter",
     "content_service", "analytics_service",
 ]

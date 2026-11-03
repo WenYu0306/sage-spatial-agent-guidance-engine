@@ -62,7 +62,7 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
         nonlocal prov, saver, graph
         if graph is not None:
             return
-        from knowledge_rag.provider import make_provider
+        from platform_core.llm import make_provider
 
         prov = prov or make_provider()
         if saver is None:

@@ -8,7 +8,7 @@ import psycopg
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from knowledge_rag.ingest import ingest_venue
-from knowledge_rag.provider import MockProvider, ProviderConfig
+from platform_core.llm import MockProvider, ProviderConfig
 
 
 @pytest.fixture(scope="module")
@@ -19,7 +19,7 @@ def provider():
     # 测试把全库换成了 mock 向量——用当前默认 Provider（有 key=真实）恢复，
     # 避免污染后续真实向量评测（CI 无 key 时回落 mock，全库一致）
     from knowledge_rag.ingest import ingest_venue
-    from knowledge_rag.provider import make_provider
+    from platform_core.llm import make_provider
 
     ingest_venue("山雀里·栖云广场", "shanqueli-demo", provider=make_provider())
 

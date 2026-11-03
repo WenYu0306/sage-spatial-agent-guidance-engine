@@ -9,9 +9,9 @@ from __future__ import annotations
 import os
 
 import psycopg
+from platform_core.llm import make_provider
 
 from .chunking import estimate_tokens, split_into_chunks
-from .provider import make_provider
 
 
 def _dsn() -> str:

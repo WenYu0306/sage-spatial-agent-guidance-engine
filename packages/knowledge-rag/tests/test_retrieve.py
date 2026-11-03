@@ -5,8 +5,8 @@ from __future__ import annotations
 import os
 
 import pytest
-from knowledge_rag.provider import MockProvider, ProviderConfig, ProviderUnavailableError
 from knowledge_rag.retrieval import retrieve
+from platform_core.llm import MockProvider, ProviderConfig, ProviderUnavailableError
 
 TENANT_SQL = "select id from tenants where code='shanqueli-demo'"
 VENUE_SQL = (
