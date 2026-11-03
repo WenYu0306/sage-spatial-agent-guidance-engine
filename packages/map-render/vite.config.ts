@@ -9,6 +9,7 @@ export default defineConfig({
       input: {
         poipicker: resolve(__dirname, "index.html"),
         route: resolve(__dirname, "route.html"),
+        trace: resolve(__dirname, "trace.html"),
       },
     },
   },
