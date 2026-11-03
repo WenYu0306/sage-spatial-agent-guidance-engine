@@ -50,6 +50,7 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
     graph = None
     http_route = httpx.Client(base_url=settings.route_engine_url, timeout=5)
     http_knowledge = httpx.Client(base_url=settings.knowledge_rag_url, timeout=5)
+    http_recommender = httpx.Client(base_url=settings.recommender_url, timeout=5)
 
     app = FastAPI(title="agent-orchestrator", version="0.1.0")
 
@@ -139,7 +140,8 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
             tenant_id=tenant_id, venue_id=venue_id, tenant_code=TENANT_CODE,
             venue_name=VENUE_NAME, dsn=settings.database_url,
             http_route=http_route, http_knowledge=http_knowledge,
-            position=pos, prefer_accessible=bool((req.context or {}).get("prefer_accessible")),
+            http_recommender=http_recommender, position=pos,
+            prefer_accessible=bool((req.context or {}).get("prefer_accessible")),
         )
 
         def stream():

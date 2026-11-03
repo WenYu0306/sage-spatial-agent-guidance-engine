@@ -10,7 +10,10 @@ import psycopg
 import pytest
 from agent_orchestrator.tools import ToolContext, run_tool
 from knowledge_rag.app import app as knowledge_app
+from recommender.app import create_app as recommender_create_app
 from route_engine.app import app as route_app
+
+os.environ.setdefault("SAGE_TIME_OVERRIDE", "2026-11-04T12:00:00")  # 营业状态时间注入
 
 
 class _SyncASGI(httpx.BaseTransport):
@@ -61,6 +64,9 @@ def ctx(ids):
                                 base_url="http://route.test"),
         http_knowledge=httpx.Client(transport=_SyncASGI(knowledge_app),
                                     base_url="http://kg.test"),
+        http_recommender=httpx.Client(
+            transport=_SyncASGI(recommender_create_app(dsn=_dsn())),
+            base_url="http://rec.test"),
         position={"x": 600, "y": 400, "floor_id": f1},
     )
 
@@ -110,11 +116,33 @@ def test_knowledge_query_provenance(ctx):
     assert all(i["document_id"] > 0 for i in r.data["items"])
 
 
-def test_recommend_rank_temporary_by_distance(ctx, ids):
+def test_recommend_rank_via_m7(ctx, ids):
+    """M7 落地后 recommend.rank 走 HTTP 打分：带八因子明细与理由。"""
     with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
         cur.execute("select id from pois where name in ('云雀优选超市', '巨幕星云影院')")
         pair = [r[0] for r in cur.fetchall()]
     r = run_tool("recommend.rank", {"candidates": pair}, ctx)
+    assert r.ok and "temporary" not in r.data
+    top = r.data["ranked"][0]
+    assert len(top["factors"]) == 8 and top["reasons"]
+    assert all("floor" in row for row in r.data["ranked"]), "卡片楼层信息不丢"
+
+
+def test_recommend_rank_falls_back_to_distance(ctx, ids):
+    """M7 不可用时降级为距离排序（PRD 8.2 声明的降级路径，temporary 标记）。"""
+    with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+        cur.execute("select id from pois where name in ('云雀优选超市', '巨幕星云影院')")
+        pair = [r[0] for r in cur.fetchall()]
+
+    class _Down(httpx.BaseTransport):
+        def handle_request(self, request):
+            raise httpx.ConnectError("recommender down")
+
+    from dataclasses import replace
+
+    down_ctx = replace(ctx, http_recommender=httpx.Client(
+        transport=_Down(), base_url="http://rec.test"))
+    r = run_tool("recommend.rank", {"candidates": pair}, down_ctx)
     assert r.ok and r.data["temporary"] is True
     assert r.data["ranked"][0]["name"] == "云雀优选超市", "F1 位置距 B1 超市坐标更近"
 

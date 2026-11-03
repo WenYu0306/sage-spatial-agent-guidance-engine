@@ -40,6 +40,7 @@ class ToolContext:
     dsn: str
     http_route: httpx.Client
     http_knowledge: httpx.Client
+    http_recommender: httpx.Client | None = None  # M7 打分服务（None=直接降级）
     position: dict | None = None  # {"x": float, "y": float, "floor_id": int|None}
     prefer_accessible: bool = False
 
@@ -344,10 +345,27 @@ def _knowledge_query(args: dict, ctx: ToolContext) -> ToolResult:
 
 
 def _recommend_rank(args: dict, ctx: ToolContext) -> ToolResult:
-    """临时实现=距离升序（PRD 8.2 声明的降级路径）；完整 8 因子随 M7 替换。"""
+    """M7 八因子打分（HTTP）；服务不可用降级距离升序（PRD 8.2 声明的降级路径）。"""
     ids = args.get("candidates") or []
     if not ids:
         return ToolResult(True, {"ranked": []})
+    if ctx.http_recommender is not None:
+        try:
+            resp = ctx.http_recommender.post("/recommend/rank", json={
+                "tenant_id": ctx.tenant_id, "venue_id": ctx.venue_id,
+                "candidates": [int(i) for i in ids],
+                "position": ctx.position or {}, "tags": args.get("tags") or [],
+                "promotion_poi_ids": args.get("promotion_poi_ids") or [],
+            })
+            if resp.status_code == 200 and "ranked" in resp.json():
+                return ToolResult(True, resp.json())
+        except httpx.HTTPError:
+            pass  # 落入下方距离降级
+    return _rank_by_distance(args, ctx)
+
+
+def _rank_by_distance(args: dict, ctx: ToolContext) -> ToolResult:
+    ids = args.get("candidates") or []
     with _conn(ctx) as conn, conn.cursor() as cur:
         cur.execute(
             "select p.id, p.name, f.name, p.position_x, p.position_y "

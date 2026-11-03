@@ -21,10 +21,11 @@ from .tools import ToolContext
 
 DEMO_ROUTE_PORT = 18942
 DEMO_KG_PORT = 18943
+DEMO_REC_PORT = 18944
 _PROMPTS = Path(__file__).resolve().parents[1] / "prompts"
 
 
-def _start_services() -> tuple[subprocess.Popen, subprocess.Popen]:
+def _start_services() -> tuple[subprocess.Popen, ...]:
     """兄弟模块以真 HTTP 服务拉起（架构纪律：模块间走 HTTP，不跨包 import）。"""
     route = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "route_engine.app:app", "--port", str(DEMO_ROUTE_PORT)],
@@ -32,7 +33,11 @@ def _start_services() -> tuple[subprocess.Popen, subprocess.Popen]:
     kg = subprocess.Popen(
         [sys.executable, "-m", "uvicorn", "knowledge_rag.app:app", "--port", str(DEMO_KG_PORT)],
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    for port in (DEMO_ROUTE_PORT, DEMO_KG_PORT):
+    rec = subprocess.Popen(
+        [sys.executable, "-m", "uvicorn", "recommender.app:make_app", "--factory",
+         "--port", str(DEMO_REC_PORT)],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    for port in (DEMO_ROUTE_PORT, DEMO_KG_PORT, DEMO_REC_PORT):
         for _ in range(40):
             try:
                 if httpx.get(f"http://localhost:{port}/health", timeout=1).status_code == 200:
@@ -40,11 +45,11 @@ def _start_services() -> tuple[subprocess.Popen, subprocess.Popen]:
             except httpx.HTTPError:
                 time.sleep(0.3)
         else:
-            route.terminate()
-            kg.terminate()
+            for proc in (route, kg, rec):
+                proc.terminate()
             msg = "兄弟服务 %d 未就绪（先 make migrate && make seed && make ingest）" % port
             raise RuntimeError(msg)
-    return route, kg
+    return route, kg, rec
 
 
 def _scalar(sql: str, params: tuple = ()) -> int:
@@ -63,6 +68,7 @@ def _run_turns() -> None:
         dsn=Settings.from_env().database_url,
         http_route=httpx.Client(base_url=f"http://localhost:{DEMO_ROUTE_PORT}", timeout=5),
         http_knowledge=httpx.Client(base_url=f"http://localhost:{DEMO_KG_PORT}", timeout=5),
+        http_recommender=httpx.Client(base_url=f"http://localhost:{DEMO_REC_PORT}", timeout=5),
         position={"x": 600, "y": 400, "floor_id": _scalar(
             "select f.id from floors f join venues v on v.id=f.venue_id "
             "join tenants t on t.id=v.tenant_id "
@@ -94,12 +100,12 @@ def _run_turns() -> None:
 
 
 def main() -> int:
-    route_proc, kg_proc = _start_services()
+    procs = _start_services()
     try:
         _run_turns()
     finally:
-        route_proc.terminate()
-        kg_proc.terminate()
+        for proc in procs:
+            proc.terminate()
     return 0
 
 

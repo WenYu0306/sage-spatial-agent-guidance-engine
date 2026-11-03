@@ -13,6 +13,7 @@ class Settings:
     sage_env: str
     route_engine_url: str
     knowledge_rag_url: str
+    recommender_url: str
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -25,4 +26,5 @@ class Settings:
             sage_env=os.environ.get("SAGE_ENV", "dev"),
             route_engine_url=os.environ.get("SVC_ROUTE_ENGINE", "http://localhost:8942"),
             knowledge_rag_url=os.environ.get("SVC_KNOWLEDGE_RAG", "http://localhost:8943"),
+            recommender_url=os.environ.get("SVC_RECOMMENDER", "http://localhost:8944"),
         )

@@ -15,7 +15,7 @@ CLOSING_SOON_WINDOW = 30  # 分钟：距打烊不足 30 分钟记 closing_soon
 
 SQL_CANDIDATES = """
 select p.id, p.name, p.position_x, p.position_y, p.floor_id, p.business_hours,
-       p.tags, p.hot_score, p.recommend_weight, f.level, m.scale_meter
+       p.tags, p.hot_score, p.recommend_weight, f.level, m.scale_meter, f.name
 from pois p
 join floors f on f.id = p.floor_id
 left join map_layers m on m.floor_id = p.floor_id and m.status = 'published'
@@ -87,7 +87,7 @@ def gather(cur, tenant_id: int, venue_id: int, candidate_ids: list[int],
         pos_level = row[0] if row else None
     out = []
     for (pid, name, x, y, floor_id, bh, tags, hot, weight, level,
-         scale) in cand_rows:
+         scale, floor_name) in cand_rows:
         scale = float(scale or 1.0)
         dist_m = _dist(position.get("x", 0), position.get("y", 0), x, y) * scale
         td = trunk.get(floor_id) or []
@@ -102,5 +102,6 @@ def gather(cur, tenant_id: int, venue_id: int, candidate_ids: list[int],
             "hot_score": float(hot),
             "tags": list(tags or []),
             "trunk_dist_m": round(min(trunk_dist, 1e7), 1),
+            "floor": floor_name,
         })
     return out

@@ -57,8 +57,10 @@ def create_app(dsn: str) -> FastAPI:
         for c in cands:
             c["has_promotion"] = c["poi_id"] in promo
         ranked = score_candidates(cands, {"tags": req.tags}, weights=weights)
+        by_id = {c["poi_id"]: c for c in cands}
         for row in ranked:
             row["score"] = round(row["score"], 4)
+            row["floor"] = by_id[row["poi_id"]].get("floor")  # 卡片楼层信息透传
         with psycopg.connect(dsn) as conn, conn.cursor() as cur:
             cur.executemany(
                 "insert into recommend_logs (tenant_id, venue_id, message_id, "

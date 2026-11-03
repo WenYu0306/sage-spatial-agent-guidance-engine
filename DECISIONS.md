@@ -22,3 +22,4 @@
 - 2026-11-04 D-017 degraded 语义=回答完整性受损（硬错误/知识降级/预算超限/幻觉拦截）；路线文字指引等工具级提示只记 error_code 不拉低整轮状态。
 - 2026-11-04 D-018 platform_core 定位 L0 基础层（同 api-contract），各包可 import，在模块独立性契约中以 ignore_imports 显式豁免。
 - 2026-11-04 D-019 M1 认证：JWT HS256（PyJWT），access 2h 携带角色/范围、refresh 7d 最小化并轮换（旧 jti 进 Redis 黑名单带 TTL，降级内存）；凭证失败统一 401/1001 不区分原因（防枚举），越权 403/1003 写 operation_logs。PRD 6.1 user_roles 主键与可空 venue_id 矛盾，以表达式唯一索引 COALESCE 实现同语义。
+- 2026-11-04 D-020 M7 落地：M5 recommend.rank 切 HTTP 调 recommender（8944），八因子打分；服务不可用降级距离升序（PRD 8.2 声明路径，标 temporary）。营销旗标由 M5 传入，营销表不进 M7 内核（内核零业务词）。权重固定配置文件（F-16）。
