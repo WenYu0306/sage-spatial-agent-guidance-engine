@@ -1,0 +1,44 @@
+# 业态分类字典（PRD 6.2 poi_categories：换场景只改这张表）。
+# is_facility=true 的分类是公共设施，不参与推荐排序，但 AI 可检索（卫生间/母婴室类问句依赖）。
+tenant_code: shanqueli-demo
+venue_type: mall
+categories:
+  # ---------- 餐饮（8） ----------
+  - {code: restaurant, name: 餐饮, parent_code: null, sort_order: 10}
+  - {code: chinese, name: 中餐, parent_code: restaurant, sort_order: 11}
+  - {code: hotpot, name: 火锅, parent_code: restaurant, sort_order: 11}
+  - {code: japanese, name: 日料, parent_code: restaurant, sort_order: 11}
+  - {code: western, name: 西餐, parent_code: restaurant, sort_order: 11}
+  - {code: coffee_tea, name: 咖啡茶饮, parent_code: restaurant, sort_order: 11}
+  - {code: bakery, name: 烘焙甜品, parent_code: restaurant, sort_order: 11}
+  - {code: fastfood, name: 快餐简餐, parent_code: restaurant, sort_order: 11}
+
+  # ---------- 零售（9） ----------
+  - {code: retail, name: 零售, parent_code: null, sort_order: 20}
+  - {code: fashion, name: 服饰鞋帽, parent_code: retail, sort_order: 21}
+  - {code: shoes_bags, name: 箱包鞋店, parent_code: retail, sort_order: 21}
+  - {code: digital, name: 数码电子, parent_code: retail, sort_order: 21}
+  - {code: beauty, name: 美妆护肤, parent_code: retail, sort_order: 21}
+  - {code: jewelry, name: 珠宝配饰, parent_code: retail, sort_order: 21}
+  - {code: toys_books, name: 玩具书文, parent_code: retail, sort_order: 21}
+  - {code: glasses, name: 眼镜视光, parent_code: retail, sort_order: 21}
+  - {code: supermarket, name: 超市, parent_code: retail, sort_order: 22}
+
+  # ---------- 娱乐/生活服务（6） ----------
+  - {code: cinema, name: 电影院, parent_code: null, sort_order: 30}
+  - {code: gym, name: 健身房, parent_code: null, sort_order: 31}
+  - {code: kids_play, name: 儿童乐园, parent_code: null, sort_order: 32}
+  - {code: education, name: 教育培训, parent_code: null, sort_order: 33}
+  - {code: salon, name: 美发美甲, parent_code: null, sort_order: 34}
+  - {code: life_service, name: 生活服务, parent_code: null, sort_order: 35}
+
+  # ---------- 公共设施（9 类，is_facility=true） ----------
+  - {code: toilet, name: 卫生间, parent_code: null, is_facility: true, sort_order: 40}
+  - {code: nursing_room, name: 母婴室, parent_code: null, is_facility: true, sort_order: 41}
+  - {code: elevator, name: 直梯, parent_code: null, is_facility: true, sort_order: 42}
+  - {code: escalator, name: 扶梯, parent_code: null, is_facility: true, sort_order: 42}
+  - {code: info_desk, name: 服务台, parent_code: null, is_facility: true, sort_order: 43}
+  - {code: parking, name: 停车场出入口, parent_code: null, is_facility: true, sort_order: 44}
+  - {code: atm, name: 自助银行, parent_code: null, is_facility: true, sort_order: 45}
+  - {code: charging_station, name: 充电桩, parent_code: null, is_facility: true, sort_order: 46}
+  - {code: clinic, name: 医务室, parent_code: null, is_facility: true, sort_order: 47}

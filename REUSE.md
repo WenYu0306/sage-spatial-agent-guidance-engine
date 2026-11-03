@@ -17,6 +17,7 @@
 | json-schema-to-typescript | ^15.0 | MIT | 契约 → TS 类型生成 | openapi-typescript | 以 JSON Schema 为契约源，链路最短 |
 | datamodel-code-generator | >=0.28 | MIT | 契约 → Pydantic v2 模型 | 手写模型 | 从同一 JSON Schema 源生成，保证两端一致 |
 | pydantic / jsonschema / pyyaml | >=2.9 / >=4.23 / >=6.0 | MIT / MIT / MIT | 契约校验与生成的基础库 | — | validate/gen 的支撑库，随 api-contract 引入 |
+| bcrypt | >=4.2 | Apache-2.0 | seed 演示运营账号口令哈希（PRD 6.1 指定 bcrypt cost≥12 存储格式） | argon2-cffi、passlib | pyca 官方实现、维护活跃；PRD 已指定 bcrypt 格式，无选型分歧；仅 demo 数据准备阶段使用 |
 
 ## 待引入（后续任务按流程调研后登记）
 

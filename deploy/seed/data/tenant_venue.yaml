@@ -1,0 +1,49 @@
+# 虚拟商场 demo 数据源（手册 7.2）。全部名称虚构——禁止真实商场/商户/促销信息。
+# 主题名“山雀里/栖云/云雀”为虚构系列，与任何真实品牌无对应关系。
+tenant:
+  code: shanqueli-demo
+  name: 山雀里商业管理集团
+  plan: demo
+  status: active
+  settings:
+    locale: zh-CN
+
+venue:
+  name: 山雀里·栖云广场
+  venue_type: mall
+  address: 虚构市云雀区栖枝街 88 号
+  timezone: Asia/Shanghai
+  status: active
+  settings:
+    business_hours: "10:00-22:00"
+    welcome: 欢迎来到山雀里·栖云广场
+    default_floor: F1
+
+roles: [platform_admin, venue_admin, venue_editor, merchant, device]
+
+demo_admin:
+  username: demo_admin
+  display_name: 栖云广场运营演示账号
+  status: active
+
+floors:
+  - name: B1
+    level: -1
+    elevation: -5.20
+    is_default: false
+    sort_order: 0
+  - name: F1
+    level: 1
+    elevation: 0
+    is_default: true
+    sort_order: 1
+  - name: F2
+    level: 2
+    elevation: 5.20
+    is_default: false
+    sort_order: 2
+
+map_layers:
+  B1: {svg_url: /static/maps/b1_placeholder.svg, width: 1200, height: 800, scale_meter: 0.15}
+  F1: {svg_url: /static/maps/f1_placeholder.svg, width: 1200, height: 800, scale_meter: 0.15}
+  F2: {svg_url: /static/maps/f2_placeholder.svg, width: 1200, height: 800, scale_meter: 0.15}
