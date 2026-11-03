@@ -21,10 +21,28 @@ venue:
 
 roles: [platform_admin, venue_admin, venue_editor, merchant, device]
 
-demo_admin:
-  username: demo_admin
-  display_name: 栖云广场运营演示账号
-  status: active
+# M1 演示账号：口令统一取 SEED_DEMO_ADMIN_PASSWORD（已存在账号不覆写口令）。
+# venue_admin/venue_editor 绑定本场地；merchant 绑定 store 指定门店（pois.name）。
+demo_accounts:
+  - username: demo_admin
+    display_name: 栖云广场运营演示账号
+    role: venue_admin
+  - username: demo_editor
+    display_name: 栖云广场内容编辑
+    role: venue_editor
+  - username: demo_merchant
+    display_name: 野莓茶集店主
+    role: merchant
+    store: 野莓茶集
+
+# M1 演示设备：自然键 (tenant_id, code) upsert；坐标为 SVG 网格（与 POI 同系）。
+devices:
+  - code: screen-f1-01
+    name: F1 中庭导览大屏
+    device_type: screen
+    floor: F1
+    x: 600
+    y: 400
 
 floors:
   - name: B1

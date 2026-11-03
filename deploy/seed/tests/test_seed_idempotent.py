@@ -34,7 +34,9 @@ def test_identity_and_space_scale(seed_mod):
     assert counts["venues"] == 1
     assert counts["floors"] == 3, "B1/F1/F2 三层"
     assert counts["map_layers"] == 3
-    assert counts["users"] == 1, "演示运营账号 1 个"
+    assert counts["users"] == 3, "M1 演示账号 3 个（venue_admin/venue_editor/merchant）"
+    assert counts.get("user_roles") == 3, "每个演示账号恰一条角色绑定"
+    assert counts.get("devices") == 1, "M1 演示设备 1 台（screen-f1-01）"
     assert counts["roles"] == 5, "PRD 6.1 五个角色字典"
     assert counts["poi_categories"] >= 25, "分类字典应覆盖餐饮/零售/娱乐/设施"
     assert counts["pois"] == 88, "68 店铺 + 20 设施"

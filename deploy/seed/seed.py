@@ -20,9 +20,9 @@ SEED_DIR = Path(__file__).resolve().parent
 DATA_DIR = SEED_DIR / "data"
 
 COUNT_TABLES = (
-    "tenants", "users", "roles", "venues", "floors", "map_layers",
-    "poi_categories", "pois", "activities", "coupons", "knowledge_documents",
-    "route_nodes", "route_edges",
+    "tenants", "users", "roles", "user_roles", "devices", "venues", "floors",
+    "map_layers", "poi_categories", "pois", "activities", "coupons",
+    "knowledge_documents", "route_nodes", "route_edges",
 )
 
 
@@ -70,8 +70,8 @@ def _seed_identity(cur, data: dict) -> int:
     for code in data.get("roles", []):
         cur.execute("insert into roles (code) values (%s) on conflict (code) do nothing", (code,))
 
-    admin = data.get("demo_admin")
-    if not admin:
+    accounts = data.get("demo_accounts") or []
+    if not accounts:
         return tid
     password = os.environ.get("SEED_DEMO_ADMIN_PASSWORD", "")
     if not password:
@@ -80,22 +80,63 @@ def _seed_identity(cur, data: dict) -> int:
             file=sys.stderr,
         )
         return tid
-    uid = _one(cur, "select id from users where tenant_id = %s and username = %s",
-               (tid, admin["username"]))
-    if uid:
-        # 已存在只更新展示名与状态，永不覆写口令（重复 seed 不搅乱口令）
-        cur.execute(
-            "update users set display_name=%s, status=%s where id=%s",
-            (admin["display_name"], admin.get("status", "active"), uid),
-        )
-    else:
-        hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode()
-        cur.execute(
-            "insert into users (tenant_id, username, password_hash, display_name, status) "
-            "values (%s, %s, %s, %s, %s)",
-            (tid, admin["username"], hashed, admin["display_name"], admin.get("status", "active")),
-        )
+    for acct in accounts:
+        uid = _one(cur, "select id from users where tenant_id = %s and username = %s",
+                   (tid, acct["username"]))
+        if uid:
+            # 已存在只更新展示名与状态，永不覆写口令（重复 seed 不搅乱口令）
+            cur.execute(
+                "update users set display_name=%s, status=%s where id=%s",
+                (acct["display_name"], acct.get("status", "active"), uid),
+            )
+        else:
+            hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode()
+            cur.execute(
+                "insert into users (tenant_id, username, password_hash, display_name, status) "
+                "values (%s, %s, %s, %s, %s)",
+                (tid, acct["username"], hashed, acct["display_name"],
+                 acct.get("status", "active")),
+            )
     return tid
+
+
+def _seed_rbac(cur, tenant_id: int, venue_id: int, floor_ids: dict, tv: dict,
+               poi_id_map: dict) -> None:
+    """角色绑定（user_roles）与设备行（devices）；users 已由 _seed_identity 建好。
+
+    venue_admin/venue_editor 绑定本场地；merchant 绑定 acct.store 指定的门店 POI；
+    设备按 (tenant_id, code) 自然键 upsert；角色绑定冲突即跳过（幂等）。
+    """
+    for acct in tv.get("demo_accounts") or []:
+        uid = _one(cur, "select id from users where tenant_id=%s and username=%s",
+                   (tenant_id, acct["username"]))
+        if uid is None:
+            continue  # 口令未设置时账号未建，跳过绑定
+        role_code = acct["role"]
+        scope_venue = venue_id if role_code in ("venue_admin", "venue_editor") else None
+        merchant_id = None
+        if role_code == "merchant" and acct.get("store"):
+            merchant_id = poi_id_map.get(acct["store"])
+            if merchant_id is None:
+                raise SystemExit(f"merchant 绑定门店不存在：{acct['store']}")
+        cur.execute(
+            "insert into user_roles (user_id, role_id, venue_id, merchant_id) "
+            "values (%s, (select id from roles where code=%s), %s, %s) "
+            "on conflict do nothing",
+            (uid, role_code, scope_venue, merchant_id),
+        )
+    for dev in tv.get("devices") or []:
+        cur.execute(
+            "insert into devices (tenant_id, venue_id, floor_id, code, name, device_type, "
+            "position_x, position_y, status) "
+            "values (%s, %s, %s, %s, %s, %s, %s, %s, 'offline') "
+            "on conflict (tenant_id, code) do update set "
+            "name=excluded.name, device_type=excluded.device_type, "
+            "floor_id=excluded.floor_id, position_x=excluded.position_x, "
+            "position_y=excluded.position_y",
+            (tenant_id, venue_id, floor_ids.get(dev.get("floor", "F1")), dev["code"],
+             dev["name"], dev.get("device_type", "screen"), dev.get("x"), dev.get("y")),
+        )
 
 
 def _seed_venue(cur, tenant_id: int, data: dict) -> tuple[int, dict[str, int]]:
@@ -484,17 +525,20 @@ def run_seed(dsn: str | None = None) -> dict[str, int]:
                     d = _load_yaml(pois_file)
                     if d:
                         pois_ctx.extend(_seed_pois(cur, tenant_id, venue_id, floor_ids, d))
-                admin_uid = _one(
-                    cur,
-                    "select id from users where tenant_id=%s and username=%s",
-                    (tenant_id, tv["demo_admin"]["username"]),
-                )
+                admin_uid = None
+                if tv.get("demo_accounts"):
+                    admin_uid = _one(
+                        cur,
+                        "select id from users where tenant_id=%s and username=%s",
+                        (tenant_id, tv["demo_accounts"][0]["username"]),
+                    )
                 with cur.connection.cursor() as cur3:
                     cur3.execute(
                         "select name, id from pois where tenant_id=%s and venue_id=%s",
                         (tenant_id, venue_id),
                     )
                     poi_id_map = dict(cur3.fetchall())
+                _seed_rbac(cur, tenant_id, venue_id, floor_ids, tv, poi_id_map)
                 cat_names = {}
                 facility_cats: set[str] = set()
                 if cats:
