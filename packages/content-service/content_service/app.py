@@ -14,13 +14,14 @@ import os
 
 import psycopg
 from fastapi import Depends, FastAPI, Query
-from fastapi.testclient import TestClient  # noqa: F401  （测试同款依赖）
 from platform_core.auth_router import (
     AuthContext,
     AuthRuntime,
     create_auth_router,
     install_error_handlers,
 )
+from psycopg.types.json import Jsonb
+from pydantic import BaseModel, Field
 
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
@@ -36,6 +37,36 @@ def _open_now(bh: dict, now: dt.datetime) -> bool:
         except ValueError:
             continue
     return False
+
+
+class PublishBody(BaseModel):
+    target: str
+
+
+class PoiCreate(BaseModel):
+    venue_id: int
+    floor_id: int
+    category_code: str
+    name: str = Field(min_length=1, max_length=128)
+    intro: str | None = None
+    position_x: float
+    position_y: float
+    business_hours: dict = Field(default_factory=dict)
+    tags: list[str] = Field(default_factory=list)
+    images: list = Field(default_factory=list)
+    contact: str | None = None
+
+
+class PoiPatch(BaseModel):
+    name: str | None = None
+    intro: str | None = None
+    position_x: float | None = None
+    position_y: float | None = None
+    business_hours: dict | None = None
+    tags: list[str] | None = None
+    images: list | None = None
+    contact: str | None = None
+    category_code: str | None = None
 
 
 def create_app(dsn: str) -> FastAPI:
@@ -169,6 +200,131 @@ def create_app(dsn: str) -> FastAPI:
                            "status": r[7], "tags": r[8], "intro": r[9]}
                           for r in data], "total": total, "page": page,
                 "page_size": page_size}
+
+    # ---------- 写路径（B2）：CRUD + 发布状态机 ----------
+
+    POI_TRANSITIONS = {
+        "draft": {"pending"},
+        "pending": {"published", "draft"},
+        "published": {"offline"},
+        "offline": {"draft"},
+    }
+    POI_TARGET_ROLES = {  # 允许执行该流转的角色
+        "pending": ("platform_admin", "venue_admin", "venue_editor", "merchant"),
+        "published": ("platform_admin", "venue_admin"),
+        "draft": ("platform_admin", "venue_admin", "venue_editor"),
+        "offline": ("platform_admin", "venue_admin"),
+    }
+
+
+
+
+    def _load_poi_for_write(ctx: AuthContext, poi_id: int) -> tuple:
+        """取 POI 并强制范围（场地角色须同场地；merchant 仅锚点门店自己）。"""
+        row = one(
+            "select p.id, p.venue_id, p.merchant_id, p.status, p.tenant_id "
+            "from pois p where p.id=%s and p.deleted_at is null", (poi_id,))
+        if not row or row[4] != ctx.tenant_id:
+            from platform_core.auth_router import AuthError
+
+            raise AuthError(403, 1003, "POI 不存在或不属于当前租户")
+        ctx.ensure_venue(row[1])
+        if ctx.merchant_id is not None and row[2] != ctx.merchant_id:
+            from platform_core.auth_router import AuthError
+
+            ctx._deny("你没有该门店的操作权限", "poi", poi_id)
+        return row
+
+    @app.post("/api/v1/pois")
+    def poi_create(body: PoiCreate,
+                   ctx: AuthContext = Depends(runtime.dependency(
+                       "platform_admin", "venue_admin", "venue_editor", "merchant"))):
+        _venue_of_tenant(ctx, body.venue_id)
+        if not one("select 1 from floors where id=%s and venue_id=%s",
+                   (body.floor_id, body.venue_id)):
+            from platform_core.auth_router import AuthError
+
+            raise AuthError(403, 1003, "楼层不属于该场地")
+        merchant_id = ctx.merchant_id if ctx.merchant_id is not None else None
+        row = one(
+            "insert into pois (tenant_id, venue_id, floor_id, merchant_id, "
+            "category_code, name, intro, position_x, position_y, business_hours, "
+            "tags, images, contact, status) "
+            "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'draft') "
+            "returning id, status",
+            (ctx.tenant_id, body.venue_id, body.floor_id, merchant_id,
+             body.category_code, body.name, body.intro, body.position_x,
+             body.position_y, Jsonb(body.business_hours), Jsonb(body.tags),
+             Jsonb(body.images), body.contact))
+        runtime.oplog(ctx.tenant_id, ctx.user_id, "create", "poi", row[0],
+                      ctx.trace_id, ctx.ip)
+        return {"id": row[0], "status": row[1]}
+
+    @app.patch("/api/v1/pois/{poi_id}")
+    def poi_patch(poi_id: int, body: PoiPatch,
+                  ctx: AuthContext = Depends(runtime.dependency(
+                      "platform_admin", "venue_admin", "venue_editor", "merchant"))):
+        row = _load_poi_for_write(ctx, poi_id)
+        sets, params = [], []
+        for col in ("name", "intro", "position_x", "position_y", "contact",
+                    "category_code"):
+            val = getattr(body, col)
+            if val is not None:
+                sets.append(f"{col}=%s")
+                params.append(val)
+        for col in ("business_hours", "tags", "images"):
+            val = getattr(body, col)
+            if val is not None:
+                sets.append(f"{col}=%s")
+                params.append(Jsonb(val))
+        if not sets:
+            return {"id": poi_id, "status": row[3]}
+        params.append(poi_id)
+        with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+            cur.execute(f"update pois set {', '.join(sets)}, updated_at=now() "
+                        "where id=%s returning status", tuple(params))
+            status = cur.fetchone()[0]
+            conn.commit()
+        runtime.oplog(ctx.tenant_id, ctx.user_id, "update", "poi", poi_id,
+                      ctx.trace_id, ctx.ip,
+                      diff={"fields": [s.split("=")[0] for s in sets]})
+        return {"id": poi_id, "status": status}
+
+    @app.delete("/api/v1/pois/{poi_id}")
+    def poi_delete(poi_id: int,
+                   ctx: AuthContext = Depends(runtime.dependency(
+                       "platform_admin", "venue_admin", "venue_editor"))):
+        _load_poi_for_write(ctx, poi_id)
+        with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+            cur.execute("update pois set deleted_at=now() where id=%s", (poi_id,))
+            conn.commit()
+        runtime.oplog(ctx.tenant_id, ctx.user_id, "delete", "poi", poi_id,
+                      ctx.trace_id, ctx.ip)
+        return {"id": poi_id, "deleted": True}
+
+    @app.post("/api/v1/pois/{poi_id}/publish")
+    def poi_publish(poi_id: int, body: PublishBody,
+                    ctx: AuthContext = Depends(runtime.dependency(
+                        "platform_admin", "venue_admin", "venue_editor", "merchant"))):
+        row = _load_poi_for_write(ctx, poi_id)
+        current, target = row[3], body.target
+        if target not in POI_TRANSITIONS.get(current, set()):
+            from fastapi.responses import JSONResponse
+
+            return JSONResponse(status_code=409, content={
+                "error_code": 4001,
+                "message": f"状态不允许：{current} 不能转到 {target}"})
+        if ctx.roles and not set(ctx.roles) & set(POI_TARGET_ROLES[target]):
+
+            ctx._deny("你没有该操作的权限", "poi", poi_id)
+        extra = ", published_at=now()" if target == "published" else ""
+        with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+            cur.execute(f"update pois set status=%s{extra} where id=%s",
+                        (target, poi_id))
+            conn.commit()
+        runtime.oplog(ctx.tenant_id, ctx.user_id, "publish", "poi", poi_id,
+                      ctx.trace_id, ctx.ip, diff={"to": target})
+        return {"id": poi_id, "status": target}
 
     @app.get("/api/v1/pois/{poi_id}")
     def poi_detail(poi_id: int, ctx: AuthContext = Depends(runtime.dependency())):
