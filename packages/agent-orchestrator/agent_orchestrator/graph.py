@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import operator
 import re
 import time
@@ -21,6 +22,8 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from .intent import parse_intent
+
+logger = logging.getLogger(__name__)
 from .tools import run_tool
 
 MAX_TOOL_CALLS = 6
@@ -224,8 +227,9 @@ def _generate(state: AgentState, config) -> dict:
                                 or results.get("poi.search", {}).get("items") or [])[:3]
         ) if cards else "我暂时没有这方面的信息，你可以问问商场服务台（F1 层）。"
         degraded = True
+        logger.warning("幻觉拦截：回答含名单外店名 %s，降级为列表卡片", suspect)
         _tracer(config, state, "post_validate", None,
-                {"suspect": suspect}, {"action": "降级列表卡片"}, "ok", 0)
+                {"suspect": suspect}, {"action": "降级列表卡片"}, "degraded", 0)
 
     _tracer(config, state, "generate", None, {"digest_len": len(digest)},
             {"answer": answer[:200]}, "degraded" if degraded else "ok", 0)

@@ -2,7 +2,7 @@
 -include .env
 export
 
-.PHONY: help lint lint-violation-demo test validate gen migrate seed compose-up compose-down
+.PHONY: help lint lint-violation-demo test validate gen migrate seed ingest compose-up compose-down
 
 help: ## 列出所有目标
 	@grep -E '^[a-zA-Z_-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}'
@@ -49,8 +49,11 @@ gen: ## 从契约 JSON Schema 生成 Pydantic 与 TS 类型
 migrate: ## 跑 Alembic 迁移（deploy/migrations 是唯一改表入口）
 	uv run alembic -c deploy/migrations/alembic.ini upgrade head
 
-seed: ## 灌 demo 数据（当前为空流程：只验证连通与幂等）
+seed: ## 灌 demo 数据（虚拟商场全量）
 	uv run python deploy/seed/seed.py
+
+ingest: ## 知识文档切片+向量化入库（seed 后必须跑，RAG 才有 chunks）
+	uv run --package knowledge-rag python -m knowledge_rag.ingest
 
 compose-up: ## 起 postgres + redis
 	docker compose up -d

@@ -2,7 +2,7 @@
 
 ## 做什么
 
-意图解析（LLM 结构化输出）→ 8 工具编排（PRD 8.2，带超时/降级/入参指纹去重）→ 知识引用 → 生成（幻觉三规则 + 店名后置校验）→ SSE 流式输出；每步写 `agent_traces`；LangGraph checkpointer（PostgreSQL）支持多轮。
+意图解析（LLM 结构化输出）→ 8 工具编排（PRD 8.2，带超时/降级/入参指纹去重）→ 知识引用 → 生成（幻觉三规则 + 店名后置校验）→ SSE 流式输出；每步写 `agent_traces`；多轮：checkpointer（PostgreSQL）thread_id=session_id，且每轮注入会话最近 6 条历史到意图解析（跨轮指代可用）。
 
 ## 图结构（LangGraph）
 
@@ -24,17 +24,22 @@ START → intent ──→ tools ──→ rag ──→ rank ──→ generate
 - `GET /api/v1/agent/sessions/{id}/trace`：完整 trace 步骤（时间线视图消费）
 - `python -m uvicorn agent_orchestrator.app:app --port 8941`
 
-## 如何单独运行
+## 如何单独运行（本模块）
 
 ```bash
-make compose-up && make migrate && make seed
+cd packages/agent-orchestrator && make demo   # 进程内 ASGI 内联兄弟服务，无需起端口
+make test
+```
+
+全链路（三服务 + 评测，仓库根执行；评测前必须 ingest——make seed 只灌文档不灌向量）：
+
+```bash
+make compose-up && make migrate && make seed && make ingest
 set -a; . ./.env; set +a
 uv run --package route-engine uvicorn route_engine.app:app --port 8942 &
 uv run --package knowledge-rag uvicorn knowledge_rag.app:app --port 8943 &
 uv run --package agent-orchestrator uvicorn agent_orchestrator.app:app --port 8941 &
-# 评测（20 问全链路，真实模型）：
 uv run python scripts/run_agent_eval.py --stage full
-uv run --package agent-orchestrator pytest packages/agent-orchestrator/tests
 ```
 
 ## 示例（20 问全链路评测，DeepSeek chat + 百炼向量，2026-11-04）

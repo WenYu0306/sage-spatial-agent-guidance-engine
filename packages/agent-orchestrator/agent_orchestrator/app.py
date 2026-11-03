@@ -124,6 +124,12 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
                 (session_id, tenant_id, req.message),
             )
             message_id = cur.fetchone()[0]
+            cur.execute(
+                "select role, content from agent_messages "
+                "where session_id=%s and id <= %s order by id desc limit 6",
+                (session_id, message_id),
+            )
+            history = [{"role": r[0], "content": r[1]} for r in reversed(cur.fetchall())]
 
         pos = {}
         if req.context:
@@ -145,9 +151,10 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
                 final = graph.invoke(
                     {"tenant_id": tenant_id, "venue_id": venue_id, "message": req.message,
                      "trace_id": trace_id, "session_id": session_id, "message_id": message_id},
-                    {"configurable": {"thread_id": trace_id, "ctx": ctx, "provider": prov,
+                    {"configurable": {"thread_id": session_id, "ctx": ctx, "provider": prov,
                                       "prompts_dir": PROMPTS_DIR,
-                                      "anonymous_id": req.anonymous_id},
+                                      "anonymous_id": req.anonymous_id,
+                                      "history": history},
                      "recursion_limit": 25},
                 )
             except Exception:  # 3001：Agent 链路异常 → 兜底话术，不 500 不泄栈

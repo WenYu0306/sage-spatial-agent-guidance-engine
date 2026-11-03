@@ -198,6 +198,16 @@ def _route_plan(args: dict, ctx: ToolContext) -> ToolResult:
             (ctx.tenant_id, ctx.venue_id, to_name or ""),
         )
         goal = cur.fetchone()
+        if not goal and to_name:  # 泛称解析（"电影院"→"巨幕星云影院"）
+            cur.execute(
+                "select n.id from pois p join route_nodes n on n.poi_id=p.id "
+                "join poi_categories c on c.code=p.category_code and c.tenant_id=p.tenant_id "
+                "where p.tenant_id=%s and p.venue_id=%s "
+                "and (p.name ilike %s or c.name ilike %s or p.category_code ilike %s) "
+                "order by p.hot_score desc limit 1",
+                (ctx.tenant_id, ctx.venue_id, f"%{to_name}%", f"%{to_name}%", f"%{to_name}%"),
+            )
+            goal = cur.fetchone()
         start = None
         if from_name:
             cur.execute(

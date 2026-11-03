@@ -30,7 +30,10 @@ class _SyncASGI(httpx.BaseTransport):
 
 
 class FakeChat:
+    seen_histories = []
+
     def chat(self, messages, **_kw):
+        FakeChat.seen_histories.append(messages)
         if any("顾客说" in m["content"] for m in messages if m["role"] == "user"):
             return "为你找到云雀灶火锅，在二层。", {"tokens_in": 1, "tokens_out": 1}
         payload = json.dumps({"intent": "poi_search",
@@ -97,3 +100,22 @@ def test_trace_endpoint_returns_steps(client):
     assert r.status_code == 200 and len(steps) >= 2
     assert steps[0]["step_type"] == "intent_parse"
     assert any(s["step_type"] == "tool_call" for s in steps)
+
+
+def test_multi_turn_history_injected(client):
+    """同 session 第二轮：意图解析必须收到此前消息（thread_id=session_id + 历史）。"""
+    vid, _ = _venue_ids()
+    with client.stream("POST", "/api/v1/agent/chat",
+                       json={"venue_id": vid, "message": "我想吃火锅"}) as resp:
+        text = "".join(chunk for chunk in resp.iter_text())
+    meta = [ln for ln in text.splitlines() if ln.startswith("data: ")][0]
+    session_id = json.loads(meta[6:])["session_id"]
+    FakeChat.seen_histories.clear()
+    with client.stream("POST", "/api/v1/agent/chat",
+                       json={"venue_id": vid, "session_id": session_id,
+                             "message": "这家店现在营业吗"}) as resp:
+        "".join(chunk for chunk in resp.iter_text())
+    assert any(
+        any("我想吃火锅" in m["content"] for m in msgs if m["role"] == "user")
+        for msgs in FakeChat.seen_histories
+    ), "第二轮意图解析必须携带首轮历史"

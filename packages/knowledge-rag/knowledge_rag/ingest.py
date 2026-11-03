@@ -65,3 +65,18 @@ def ingest_venue(venue_name: str, tenant_code: str, provider=None, dsn: str | No
                 )
                 chunks_written += 1
     return {"documents": docs, "chunks": chunks_written}
+
+
+def main() -> int:
+    import argparse
+
+    ap = argparse.ArgumentParser(description="知识切片+向量化入库（幂等）")
+    ap.add_argument("--venue", default="山雀里·栖云广场")
+    ap.add_argument("--tenant", default="shanqueli-demo")
+    args = ap.parse_args()
+    print(ingest_venue(args.venue, args.tenant))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
