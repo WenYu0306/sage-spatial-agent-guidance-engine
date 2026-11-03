@@ -1,0 +1,27 @@
+# F1 层店铺（零售+轻餐，24 家，全部虚构）。坐标为 1200x800 SVG 网格，M4 出图时微调。
+floor: F1
+pois:
+  - {name: 循迹数码生活馆, category: digital, x: 150, y: 180, hours: "10:00-22:00", tags: [数码, 体验], hot: 82, weight: 1.05}
+  - {name: 橘屿美妆集合店, category: beauty, x: 290, y: 180, hours: "10:00-22:00", tags: [美妆, 护肤, 约会], hot: 78}
+  - {name: 素岛衣舍, category: fashion, x: 430, y: 180, hours: "10:00-22:00", tags: [服饰, 基础款], hot: 66}
+  - {name: 明澈视光, category: glasses, x: 570, y: 180, hours: "10:00-22:00", tags: [眼镜, 验光], hot: 58}
+  - {name: 穗禾珠宝, category: jewelry, x: 710, y: 180, hours: "10:00-22:00", tags: [珠宝, 挑礼物, 约会], hot: 74, weight: 1.10}
+  - {name: 山风衣舍, category: fashion, x: 800, y: 180, hours: "10:00-22:00", tags: [服饰, 通勤], hot: 70}
+  - {name: 三叶鞋包, category: shoes_bags, x: 990, y: 180, hours: "10:00-22:00", tags: [鞋包, 百搭], hot: 68}
+  - {name: 汀兰咖啡, category: coffee_tea, x: 150, y: 300, hours: "09:30-21:30", tags: [咖啡, 安静, 自习], hot: 80}
+  - {name: 序集文具, category: toys_books, x: 290, y: 300, hours: "10:00-22:00", tags: [文具, 学生], hot: 57}
+  - {name: 屿袖裁缝店, category: life_service, x: 570, y: 300, hours: "10:00-22:00", tags: [改衣, 裁缝], hot: 52}
+  - {name: 山音唱片行, category: digital, x: 850, y: 300, hours: "10:00-22:00", tags: [黑胶, 唱片, 怀旧], hot: 65}
+  - {name: 野莓茶集, category: coffee_tea, x: 1050, y: 300, hours: "10:00-21:30", tags: [果茶, 约会, 拍照], hot: 84, weight: 1.10}
+  - {name: 木禾衣舍, category: fashion, x: 150, y: 560, hours: "10:00-22:00", tags: [服饰, 棉麻], hot: 62}
+  - {name: 青梧衣舍, category: fashion, x: 300, y: 560, hours: "10:00-22:00", tags: [服饰, 居家], hot: 58}
+  - {name: 纸鸢书屋, category: toys_books, x: 430, y: 560, hours: "10:00-22:00", tags: [书店, 亲子, 安静], hot: 72}
+  - {name: 白鹭美发沙龙, category: salon, x: 570, y: 560, hours: "10:00-21:30", tags: [美发, 预约], hot: 66}
+  - {name: 拾光胶片冲印, category: life_service, x: 710, y: 560, hours: "10:00-22:00", tags: [冲印, 拍照, 怀旧], hot: 55}
+  - {name: 谷雨美妆, category: beauty, x: 850, y: 560, hours: "10:00-22:00", tags: [美妆, 国货], hot: 64}
+  - {name: 春山鞋包, category: shoes_bags, x: 990, y: 560, hours: "10:00-22:00", tags: [鞋包, 运动风], hot: 63}
+  - {name: 星轨首饰工作室, category: jewelry, x: 1050, y: 560, hours: "10:00-22:00", tags: [首饰, 手工, 挑礼物], hot: 67}
+  - {name: 竹马亲子写真, category: life_service, x: 150, y: 700, hours: "10:00-22:00", tags: [亲子, 拍照, 写真], hot: 60}
+  - {name: 云隙咖啡, category: coffee_tea, x: 430, y: 700, hours: "10:00-21:30", tags: [咖啡, 安静, 约会], hot: 76}
+  - {name: 拾集优品生活馆, category: life_service, x: 710, y: 700, hours: "10:00-22:00", tags: [杂货, 家居小物], hot: 61}
+  - {name: 望北服饰, category: fashion, x: 990, y: 700, hours: "10:00-22:00", tags: [服饰, 户外], hot: 59}

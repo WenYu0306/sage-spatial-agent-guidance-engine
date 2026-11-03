@@ -172,6 +172,46 @@ def _seed_categories(cur, tenant_id: int, tenant_code: str, data: dict) -> None:
         )
 
 
+def _seed_pois(cur, tenant_id: int, venue_id: int, floor_ids: dict[str, int], data: dict) -> None:
+    """店铺/设施 upsert（pois 表无唯一约束，按 tenant+venue+floor+name 查改插）。
+
+    YAML 的 hours 是 "HH:MM-HH:MM" 字符串，展开为 PRD 要求的 7 天 JSONB：
+    {"mon": [...], ..., "sun": [...], "holidays": []}。
+    """
+    default_floor = data.get("floor")
+    for p in data["pois"]:
+        floor = p.get("floor", default_floor)
+        fid = floor_ids[floor]
+        h = str(p["hours"])
+        bh = {**{d: [h] for d in ("mon", "tue", "wed", "thu", "fri", "sat", "sun")},
+              "holidays": []}
+        pid = _one(
+            cur,
+            "select id from pois where tenant_id=%s and venue_id=%s and floor_id=%s and name=%s",
+            (tenant_id, venue_id, fid, p["name"]),
+        )
+        if pid:
+            cur.execute(
+                "update pois set category_code=%s, intro=%s, contact=%s, position_x=%s, "
+                "position_y=%s, business_hours=%s, tags=%s, hot_score=%s, recommend_weight=%s, "
+                "status='published', deleted_at=null where id=%s",
+                (p["category"], p.get("intro"), p.get("contact", "内线 8000"),
+                 float(p["x"]), float(p["y"]), Jsonb(bh), Jsonb(p.get("tags", [])),
+                 float(p.get("hot", 0)), float(p.get("weight", 1.0)), pid),
+            )
+        else:
+            cur.execute(
+                "insert into pois (tenant_id, venue_id, floor_id, category_code, name, intro, "
+                "contact, position_x, position_y, business_hours, tags, hot_score, "
+                "recommend_weight, status, published_at) "
+                "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'published', now())",
+                (tenant_id, venue_id, fid, p["category"], p["name"], p.get("intro"),
+                 p.get("contact", "内线 8000"), float(p["x"]), float(p["y"]), Jsonb(bh),
+                 Jsonb(p.get("tags", [])), float(p.get("hot", 0)),
+                 float(p.get("weight", 1.0))),
+            )
+
+
 def run_seed(dsn: str | None = None) -> dict[str, int]:
     """执行完整 seed，返回各表行数（供测试断言幂等与规模）。"""
     with psycopg.connect(dsn or _dsn()) as conn:
@@ -181,11 +221,18 @@ def run_seed(dsn: str | None = None) -> dict[str, int]:
                 if tv is None:
                     raise SystemExit("data/tenant_venue.yaml 缺失：它是其余数据组的外键源头")
                 tenant_id = _seed_identity(cur, tv)
-                _vid, _floor_ids = _seed_venue(cur, tenant_id, tv)
+                venue_id, floor_ids = _seed_venue(cur, tenant_id, tv)
                 cats = _load_yaml("poi_categories.yaml")
                 if cats:
                     _seed_categories(cur, tenant_id, tv["tenant"]["code"], cats)
-                # ③④⑤ 在此追加：pois/facilities → activities/coupons → knowledge/eval 基线
+                pois_files = (
+                    "pois_b1.yaml", "pois_f1.yaml", "pois_f2.yaml", "facilities.yaml",
+                )
+                for pois_file in pois_files:
+                    d = _load_yaml(pois_file)
+                    if d:
+                        _seed_pois(cur, tenant_id, venue_id, floor_ids, d)
+# ③④⑤ 在此追加：pois/facilities → activities/coupons → knowledge/eval 基线
     return count_rows(dsn or _dsn())
 
 

@@ -1,0 +1,23 @@
+# B1 层店铺（美食市集 + 超市 + 生活服务，20 家，全部虚构）。
+floor: B1
+pois:
+  - {name: 山禾面馆, category: fastfood, x: 150, y: 180, hours: "10:00-21:30", tags: [面食, 快餐, 聚餐], hot: 71}
+  - {name: 二两小面, category: fastfood, x: 290, y: 180, hours: "10:00-21:30", tags: [面食, 快餐], hot: 67}
+  - {name: 谷香包子铺, category: fastfood, x: 430, y: 180, hours: "08:30-20:30", tags: [包子, 早餐], hot: 69}
+  - {name: 素直轻食, category: fastfood, x: 570, y: 180, hours: "10:30-21:00", tags: [轻食, 沙拉, 健康], hot: 61}
+  - {name: 云吞记, category: fastfood, x: 710, y: 180, hours: "10:00-21:30", tags: [云吞, 快餐], hot: 66}
+  - {name: 拾味煲仔饭, category: fastfood, x: 850, y: 180, hours: "11:00-21:00", tags: [煲仔饭, 快餐], hot: 64}
+  - {name: 蜜巷烘焙, category: bakery, x: 990, y: 180, hours: "09:00-21:30", tags: [烘焙, 面包, 甜品], hot: 73}
+  - {name: 琥珀奶茶铺, category: coffee_tea, x: 150, y: 300, hours: "10:00-21:30", tags: [奶茶, 外带], hot: 75}
+  - {name: 慢煮轻食沙拉, category: fastfood, x: 290, y: 300, hours: "10:30-21:00", tags: [轻食, 沙拉, 健身餐], hot: 59}
+  - {name: 洗衣工坊, category: life_service, x: 430, y: 300, hours: "09:00-20:00", tags: [洗衣, 改衣], hot: 48}
+  - {name: 目邻眼镜, category: glasses, x: 570, y: 300, hours: "10:00-22:00", tags: [眼镜, 验光], hot: 55}
+  - {name: 山茶美妆, category: beauty, x: 710, y: 300, hours: "10:00-22:00", tags: [美妆, 护肤], hot: 62}
+  - {name: 食光便利店, category: supermarket, x: 990, y: 300, hours: "08:00-22:00", tags: [便利店, 应急采购], hot: 70}
+  - {name: 深夜厨房, category: western, x: 150, y: 560, hours: "11:00-22:00", tags: [西餐, 晚餐, 约会], hot: 72}
+  - {name: 灶边家常菜, category: chinese, x: 290, y: 560, hours: "10:30-21:00", tags: [家常菜, 聚餐], hot: 68}
+  - {name: 豆豆乐园, category: kids_play, x: 430, y: 560, hours: "10:00-21:00", tags: [亲子, 游乐], hot: 74, weight: 1.05}
+  - {name: 白玉团子铺, category: japanese, x: 710, y: 560, hours: "10:00-21:00", tags: [日式点心, 甜品], hot: 60}
+  - {name: 时光钟表维修, category: life_service, x: 850, y: 560, hours: "10:00-20:00", tags: [维修, 钟表], hot: 46}
+  - {name: 雀鸣书店, category: toys_books, x: 990, y: 560, hours: "10:00-22:00", tags: [书店, 安静, 文创], hot: 66}
+  - {name: 云雀优选超市, category: supermarket, x: 600, y: 650, hours: "09:00-22:00", tags: [超市, 亲子, 采购], hot: 86, weight: 1.10}

@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import yaml
@@ -52,3 +53,50 @@ def test_poi_categories_structure():
     )
     assert "supermarket" in code_set, "超市分类必须有（附录 B 问句 18）"
     assert "hotpot" in code_set, "火锅分类必须有（附录 B 问句 3）"
+    assert "cinema" in code_set, "影院分类必须有（附录 B 问句 6）"
+
+
+def test_pois_files_structure():
+    """三层店铺文件 + 设施文件：坐标边界/同层不重合/分类存在/营业时间格式/标签非空。"""
+    cats = _load("poi_categories.yaml")
+    code_set = {c["code"] for c in cats["categories"]}
+    facility_cats = {c["code"] for c in cats["categories"] if c.get("is_facility")}
+
+    all_pois: list[dict] = []
+    for fname in ("pois_b1.yaml", "pois_f1.yaml", "pois_f2.yaml"):
+        data = _load(fname)
+        floor = data.get("floor")
+        assert floor in {"B1", "F1", "F2"}, f"{fname} 缺 floor 字段"
+        for p in data["pois"]:
+            p["_floor"] = floor
+            p["_src"] = fname
+            all_pois.append(p)
+
+    fac = _load("facilities.yaml")
+    assert len(fac["pois"]) == 20, "设施必须恰好 20 处（手册 7.2 要求 2）"
+    for p in fac["pois"]:
+        p["_floor"] = p["floor"]
+        p["_src"] = "facilities.yaml"
+        all_pois.append(p)
+
+    seen: dict[tuple, str] = {}
+    for p in all_pois:
+        name, floor = p["name"], p["_floor"]
+        x, y = float(p["x"]), float(p["y"])
+        assert 0 < x < 1200 and 0 < y < 800, f"{name} 坐标越界：({x},{y})"
+        assert p["category"] in code_set, f"{name} 分类 {p['category']} 不在字典中"
+        assert p["category"] not in facility_cats or p["_src"] == "facilities.yaml", (
+            f"{name} 用了设施分类却不在设施文件中"
+        )
+
+        assert re.fullmatch(r"\d{2}:\d{2}-\d{2}:\d{2}", str(p["hours"])), (
+            f"{name} 营业时间格式应为 HH:MM-HH:MM"
+        )
+        assert p.get("tags"), f"{name} 缺标签（AI 场景匹配依赖）"
+        assert 0 <= float(p.get("hot", 0)) <= 100, f"{name} hot_score 越界"
+        key = (floor, x, y)
+        assert key not in seen, f"同层坐标重复：{name} 与 {seen[key]}"
+        seen[key] = name
+
+    stores = [p for p in all_pois if p["_src"] != "facilities.yaml"]
+    assert 60 <= len(stores) <= 80, f"店铺数 {len(stores)} 应在 60—80（手册 7.2 要求 2）"

@@ -1,0 +1,23 @@
+# 公共设施 20 处（与 POI 同表，is_facility 分类区分；坐标在走廊/中庭节点）。
+# 母婴室紧邻同层卫生间（手册 7.2 要求 1）。
+pois:
+  - {name: B1 卫生间, category: toilet, floor: B1, x: 620, y: 400, hours: "08:00-22:00", tags: [卫生间, 无障碍位], hot: 90}
+  - {name: B1 直梯, category: elevator, floor: B1, x: 600, y: 200, hours: "08:00-22:00", tags: [直梯, 无障碍], hot: 88}
+  - {name: B1 服务台, category: info_desk, floor: B1, x: 600, y: 620, hours: "09:00-21:30", tags: [咨询, 广播寻人], hot: 82}
+  - {name: B1 停车场 A 口, category: parking, floor: B1, x: 150, y: 650, hours: "06:00-23:00", tags: [停车, 场地方向], hot: 84}
+  - {name: B1 停车场 B 口, category: parking, floor: B1, x: 1050, y: 650, hours: "06:00-23:00", tags: [停车, 场地方向], hot: 84}
+  - {name: B1 充电桩, category: charging_station, floor: B1, x: 180, y: 620, hours: "06:00-23:00", tags: [充电, 新能源], hot: 60}
+  - {name: B1 ATM, category: atm, floor: B1, x: 570, y: 430, hours: "08:00-22:00", tags: [自助银行], hot: 55}
+  - {name: F1 卫生间, category: toilet, floor: F1, x: 620, y: 400, hours: "08:00-22:00", tags: [卫生间, 无障碍位], hot: 90}
+  - {name: F1 母婴室, category: nursing_room, floor: F1, x: 660, y: 400, hours: "08:00-22:00", tags: [母婴, 换尿布, 哺乳], hot: 87}
+  - {name: F1 直梯, category: elevator, floor: F1, x: 600, y: 200, hours: "08:00-22:00", tags: [直梯, 无障碍], hot: 88}
+  - {name: F1 扶梯东, category: escalator, floor: F1, x: 850, y: 400, hours: "08:00-22:00", tags: [扶梯, 上行 F2], hot: 86}
+  - {name: F1 扶梯西, category: escalator, floor: F1, x: 350, y: 400, hours: "08:00-22:00", tags: [扶梯, 上行 F2], hot: 86}
+  - {name: F1 服务台, category: info_desk, floor: F1, x: 600, y: 620, hours: "09:00-21:30", tags: [咨询, 失物招领, 广播寻人], hot: 83}
+  - {name: F1 ATM, category: atm, floor: F1, x: 570, y: 430, hours: "08:00-22:00", tags: [自助银行], hot: 55}
+  - {name: F2 卫生间, category: toilet, floor: F2, x: 620, y: 400, hours: "08:00-22:00", tags: [卫生间, 无障碍位], hot: 90}
+  - {name: F2 母婴室, category: nursing_room, floor: F2, x: 660, y: 400, hours: "08:00-22:00", tags: [母婴, 换尿布, 哺乳], hot: 87}
+  - {name: F2 直梯, category: elevator, floor: F2, x: 600, y: 200, hours: "08:00-22:00", tags: [直梯, 无障碍], hot: 88}
+  - {name: F2 扶梯东, category: escalator, floor: F2, x: 850, y: 400, hours: "08:00-22:00", tags: [扶梯, 下行 F1], hot: 86}
+  - {name: F2 扶梯西, category: escalator, floor: F2, x: 350, y: 400, hours: "08:00-22:00", tags: [扶梯, 下行 F1], hot: 86}
+  - {name: F2 ATM, category: atm, floor: F2, x: 570, y: 430, hours: "08:00-22:00", tags: [自助银行], hot: 55}
