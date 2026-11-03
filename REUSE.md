@@ -29,9 +29,11 @@
 | fastapi | >=0.162 | MIT | M5 SSE 端点与后续全部 HTTP API | flask、starlette 裸用 | CLAUDE.md 第 4 节钦定栈；SSE 用 StreamingResponse 无需额外库 |
 | uvicorn | >=0.54 | BSD-3-Clause | ASGI 服务器 | hypercorn | fastapi 官方推荐组合 |
 | httpx | >=0.28 | BSD-3-Clause | 模块间 HTTP 客户端（M5 工具层调兄弟模块服务）+ FastAPI TestClient 依赖 | requests | starlette TestClient 官方依赖；async 友好 |
+| PyJWT | 2.15 | MIT | M1 认证：access/refresh token 签发与验证（HS256，PRD 9 安全表） | python-jose（维护活跃度下滑）、authlib（含 OAuth，超出需求） | API 最小（encode/decode 两个函数），持续维护，主动警告弱密钥长度 |
+| redis-py | 8.1 | MIT | token 登出黑名单（SETNX+TTL 自动过期，PRD 9：Redis 或数据库表） | 数据库表（需新迁移与清理任务） | Redis 7 已在技术栈内，黑名单仅 5 行调用；内存后端为单进程 demo 降级 |
 
 ## 待引入（后续任务按流程调研后登记）
 
-- FastAPI / SQLAlchemy 2.x / asyncpg — M1 任务时登记
+- FastAPI / SQLAlchemy 2.x / asyncpg — M8/M2 任务时登记
 - LangGraph — M5 任务时登记
 - 已按 7.3 选型登记：networkx（M3）、pytest-cov（M3）、react-zoom-pan-pinch（M4）；Pathpal 与 OpenIndoorMaps 不引入，仅作交互参考（理由见上表）
