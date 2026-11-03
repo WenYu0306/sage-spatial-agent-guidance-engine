@@ -22,6 +22,7 @@
 | networkx | >=3.7 | BSD-3-Clause | M3 路网图数据结构与 A*/Dijkstra 算法底座 | Navigine/Indoor-Routing-Library（C++、无 license、20 个月未动）、自写图算法 | 手册 7.3 选型胜出：CLAUDE.md 冻结选型；电梯/扶梯惩罚、无障碍、错误码等业务权重层全部自建其上；BSD 宽松可商用 |
 | react-zoom-pan-pinch | ^4.2 | MIT | M4 地图缩放/拖动引擎（自建分层 SVG 组件内使用） | svg-pan-zoom、@use-gesture/react、自写手势 | 手册 7.3 选型胜出：1958★、5 天前仍在提交；Pathpal（无 license、停更原型）与 OpenIndoorMaps（MapLibre 地理坐标栈，与 V1 SVG 平面坐标决策冲突）仅作交互参考 |
 | react / react-dom / vite / typescript | ^19 / ^7 / ^5.9 | MIT / MIT / MIT / Apache-2.0 | M4 前端运行时与构建（CLAUDE.md 第 4 节冻结栈，首次进入 package.json 时补登记） | — | 栈在 CLAUDE.md 已定；按"未登记依赖不进 package.json"纪律在此补记来源 |
+| tailwindcss / @tailwindcss/vite / @tanstack/react-query | ^4.1 / ^5.90 | MIT | M10 后台样式与数据请求层（CLAUDE.md 冻结栈；Tailwind v4 走 vite 插件零配置） | unocss、CSS Modules、SWR | 栈已定；v4 插件化最省配置，react-query 五态缓存/重试语义贴合 PRD 9 |
 | typescript-eslint | ^8 | MIT | TS 代码的 eslint 解析与 lint（D-007 预留，M4 落地时引入） | — | 7.1 决策预留的接线点；map-render 首批 TS 代码落地按约引入（补登记：此前补丁锚点静默失效，本行为补录） |
 | openai（Python SDK） | >=2.x | MIT | LLMProvider 的 OpenAI 兼容 HTTP 底座（embed/chat，M6/M5） | 手写 httpx 封装 | CLAUDE.md 第 4 节钦定"OpenAI 兼容 SDK"；官方维护、重试/超时现成；Provider 抽象仍自建在其上 |
 | langgraph | >=1.2 | MIT | M5 Agent 有状态编排（StateGraph/条件边/checkpointer） | 自写状态机 | CLAUDE.md 第 4 节钦定的唯一 AI 框架；手册 7.4 指定 |
