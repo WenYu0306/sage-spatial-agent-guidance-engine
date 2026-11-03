@@ -27,7 +27,7 @@ uv run --package knowledge-rag pytest packages/knowledge-rag/tests
 Top3 命中率：10/20 = 50%（provider=mock(待真实模型), threshold=0.05）
 ```
 
-**当前命中数字为 MockProvider（sha256 确定性向量，无语义）下的管线验证值**；在 `.env` 填 `LLM_API_KEY`（OpenAI 兼容网关即可）后重跑 ingest 与评测即得真实数字，评测脚本自动标注 provider 类型。embedding 维度 1024（`EMBED_DIM`，Provider 经 dimensions 参数对齐 text-embedding-3-small 等 Matryoshka 模型）。
+**两种实测模式的命中数字**：① MockProvider（sha256 确定性向量，无语义）= 50%，仅证明管线贯通；② 配真实 key 后（如 DeepSeek，其 API 无 embeddings 端点、SDK 404 被规范转译为 ProviderUnavailableError）检索自动**降级关键词模式** = 50%，但命中语义精准（E03 火锅→餐饮层指南/云雀灶/石浪、E20→商场有多少家店），7 例明确返回空（ILIKE 仅取前 3 个二元组的已知简化）。**真实向量数字**需配一个有 embeddings 端点的供应商（OpenAI / SiliconFlow bge-m3 / 阿里 text-embedding-v3 等），DeepSeek 的 key 适合 M5 的 chat（deepseek-chat 实测 200）。embedding 维度 1024（`EMBED_DIM`，Provider 经 dimensions 参数对齐 Matryoshka 模型）。
 
 ## 如何摘出复用到其他项目
 
