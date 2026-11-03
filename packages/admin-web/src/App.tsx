@@ -5,6 +5,9 @@ import { decodeJwtPayload, profileStore, tokenStore } from "./lib/auth.ts";
 import { navigate, useHashRoute } from "./router.tsx";
 import { Badge, Button, ToastHost } from "./components/ui.tsx";
 import LoginPage from "./pages/Login.tsx";
+import ActivitiesPage from "./pages/Activities.tsx";
+import CouponsPage from "./pages/Coupons.tsx";
+import KnowledgePage from "./pages/Knowledge.tsx";
 import PoisPage from "./pages/Pois.tsx";
 import VenuesPage from "./pages/Venues.tsx";
 
@@ -91,9 +94,9 @@ function Shell({ route }: { route: string }) {
 
 function Page({ route }: { route: string }) {
   if (route.startsWith("/pois")) return <PoisPage />;
-  if (route.startsWith("/activities")) return <ComingSoon title="活动管理" note="B3 交付" />;
-  if (route.startsWith("/coupons")) return <ComingSoon title="优惠管理" note="B3 交付" />;
-  if (route.startsWith("/knowledge")) return <ComingSoon title="知识内容" note="B3 交付" />;
+  if (route.startsWith("/activities")) return <ActivitiesPage />;
+  if (route.startsWith("/coupons")) return <CouponsPage />;
+  if (route.startsWith("/knowledge")) return <KnowledgePage />;
   if (route.startsWith("/weights")) return <ComingSoon title="推荐权重" note="B4 交付" />;
   if (route.startsWith("/devices")) return <ComingSoon title="设备列表" note="B4 交付" />;
   if (route.startsWith("/users")) return <ComingSoon title="账号与角色" note="B4 交付" />;

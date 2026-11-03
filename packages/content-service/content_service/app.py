@@ -605,6 +605,21 @@ def create_app(dsn: str) -> FastAPI:
                            "doc_type": r[3], "title": r[4], "status": r[5],
                            "version": r[6]} for r in data], "total": total}
 
+    @app.get("/api/v1/knowledge-documents/{doc_id}")
+    def doc_detail(doc_id: int,
+                   ctx: AuthContext = Depends(runtime.dependency(
+                       "platform_admin", "venue_admin", "venue_editor"))):
+        row = one(
+            "select id, venue_id, poi_id, doc_type, title, content, status, version "
+            "from knowledge_documents where id=%s and tenant_id=%s",
+            (doc_id, ctx.tenant_id))
+        if not row:
+            from platform_core.auth_router import AuthError
+
+            raise AuthError(403, 1003, "文档不存在或不属于当前租户")
+        return {"id": row[0], "venue_id": row[1], "poi_id": row[2], "doc_type": row[3],
+                "title": row[4], "content": row[5], "status": row[6], "version": row[7]}
+
     @app.post("/api/v1/knowledge-documents")
     def doc_create(body: DocCreate,
                    ctx: AuthContext = Depends(runtime.dependency(

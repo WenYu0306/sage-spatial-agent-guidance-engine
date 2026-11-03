@@ -162,6 +162,8 @@ def test_knowledge_doc_crud_and_version_bump(client, tokens, accounts, dsn):
     assert r.status_code == 200, r.text
     did = r.json()["id"]
     try:
+        detail = client.get(f"/api/v1/knowledge-documents/{did}", headers=h).json()
+        assert detail["content"] == DOC["content"], "单查端点返回正文（编辑回填用）"
         r2 = client.patch(f"/api/v1/knowledge-documents/{did}", headers=h,
                           json={"content": "积分可在服务台兑换"})
         assert r2.json()["version"] == 2, "内容更新版本号自增"
