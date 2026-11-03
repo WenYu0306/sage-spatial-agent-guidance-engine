@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { parseYamlDoc, toYamlDoc } from "../lib/poiExport.ts";
+import { upsertPoint } from "../lib/pointList.ts";
 import type { PoiPoint } from "../lib/types.ts";
 import { FloorPlan } from "./FloorPlan.tsx";
 import { MapStage } from "./MapStage.tsx";
@@ -30,6 +31,17 @@ export function App() {
   const [form, setForm] = useState(emptyForm);
   const [importText, setImportText] = useState("");
   const [showExport, setShowExport] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  async function copyYaml() {
+    try {
+      await navigator.clipboard.writeText(yamlOut);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      setShowExport(true); // 剪贴板不可用（非安全上下文等）→ 展开面板兜底
+    }
+  }
 
   const yamlOut = useMemo(
     () => toYamlDoc(points.filter((p) => p.floor === floor), floor),
@@ -52,8 +64,8 @@ export function App() {
 
   function confirmDraft() {
     if (!draft) return;
-    setPoints((prev) => [...prev.filter((q) => q.name !== draft.name), draft]);
-    setDraft(null);
+    setPoints((prev) => upsertPoint(prev, draft));
+    // 草稿坐标保留（录入笔语义）：改名/点击新位置后可连续录入，同名覆盖
     setForm((f) => ({ ...f, name: "" }));
   }
 
@@ -82,8 +94,11 @@ export function App() {
             {f}
           </button>
         ))}
-        <button onClick={() => setShowExport((v) => !v)} style={btn("#0f172a", "white")}>
-          导出 YAML（{points.filter((p) => p.floor === floor).length} 点）
+        <button onClick={copyYaml} style={btn(copied ? "#16a34a" : "#0f172a", "white")}>
+          {copied ? "已复制 ✓" : `复制 YAML（${points.filter((p) => p.floor === floor).length} 点）`}
+        </button>
+        <button onClick={() => setShowExport((v) => !v)} style={btn("#e2e8f0", "#0f172a")}>
+          {showExport ? "收起" : "查看"}
         </button>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16 }}>
