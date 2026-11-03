@@ -8,6 +8,7 @@ from knowledge_rag.provider import (
     LLMProvider,
     MockProvider,
     ProviderConfig,
+    ProviderUnavailableError,
 )
 
 
@@ -78,3 +79,19 @@ def test_openai_provider_embed_calls_sdk(monkeypatch):
     assert calls["model"] == cfg.embedding_model
     assert calls["dimensions"] == 4, "必须传 dimensions 使维度与 EMBED_DIM 一致"
     assert len(vecs) == 2 and len(vecs[0]) == 4
+
+
+def test_sdk_error_translated_to_provider_unavailable(monkeypatch):
+    import openai
+
+    monkeypatch.setenv("LLM_API_KEY", "sk-test")
+    cfg = ProviderConfig.from_env()
+    p = LLMProvider(cfg)
+
+    class FakeEmbeddings:
+        def create(self, model, input, dimensions=None):
+            raise openai.OpenAIError("404 无此端点（模拟 DeepSeek 无 embeddings）")
+
+    p._client = type("C", (), {"embeddings": FakeEmbeddings()})()
+    with pytest.raises(ProviderUnavailableError):
+        p.embed(["测试"])

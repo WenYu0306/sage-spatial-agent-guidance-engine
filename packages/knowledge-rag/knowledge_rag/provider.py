@@ -13,6 +13,8 @@ import math
 import os
 from dataclasses import dataclass
 
+import openai
+
 
 class DailyLimitError(Exception):
     """当日调用次数超上限（LLM_DAILY_LIMIT）。"""
@@ -103,11 +105,14 @@ class LLMProvider:
         if not texts:
             return []
         self.counter.bump(self.config.daily_limit)
-        resp = self._client.embeddings.create(
-            model=self.config.embedding_model,
-            input=texts,
-            dimensions=self.config.embed_dim,
-        )
+        try:
+            resp = self._client.embeddings.create(
+                model=self.config.embedding_model,
+                input=texts,
+                dimensions=self.config.embed_dim,
+            )
+        except openai.OpenAIError as exc:  # 404/鉴权/限流/超时等 SDK 错误 → 统一语义，调用方走降级
+            raise ProviderUnavailableError(f"embed 失败：{exc}") from exc
         return [d.embedding for d in resp.data]
 
 
