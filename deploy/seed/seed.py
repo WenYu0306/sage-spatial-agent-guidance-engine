@@ -22,6 +22,7 @@ DATA_DIR = SEED_DIR / "data"
 COUNT_TABLES = (
     "tenants", "users", "roles", "venues", "floors", "map_layers",
     "poi_categories", "pois", "activities", "coupons", "knowledge_documents",
+    "route_nodes", "route_edges",
 )
 
 
@@ -215,7 +216,8 @@ def _seed_pois(
             )
         rows_ctx.append(
             {"name": p["name"], "category": p["category"], "floor": floor,
-             "hours": h, "tags": list(p.get("tags", []))}
+             "hours": h, "tags": list(p.get("tags", [])),
+             "x": float(p["x"]), "y": float(p["y"])}
         )
     return rows_ctx
 
@@ -339,6 +341,128 @@ def _seed_poi_intros(
                     "poi_intro", row["name"], content)
 
 
+# ---------- 路网生成（M3-①）：走廊 trunk + POI 就近接入 + 跨层垂直边 ----------
+
+# PRD 6.3：步行 1.2 m/s；电梯惩罚 45s；扶梯惩罚 15s。 ride 时间为 demo 构造参数（见 DECISIONS）。
+WALK_SPEED_MPS = 1.2
+ELEVATOR_PENALTY_S = 45.0
+ESCALATOR_PENALTY_S = 15.0
+ELEVATOR_RIDE_S = 15.0
+ESCALATOR_RIDE_S = 25.0
+
+CORRIDOR_POINTS = [
+    (150.0, 260.0), (600.0, 260.0), (1050.0, 260.0),
+    (150.0, 560.0), (600.0, 560.0), (1050.0, 560.0),
+]
+
+
+def _get_or_create_node(
+    cur, tenant_id: int, venue_id: int, floor_id: int,
+    node_type: str, x: float, y: float, poi_id, accessible: bool,
+) -> int:
+    nid = _one(
+        cur,
+        "select id from route_nodes where tenant_id=%s and venue_id=%s "
+        "and floor_id=%s and node_type=%s and x=%s and y=%s",
+        (tenant_id, venue_id, floor_id, node_type, x, y),
+    )
+    if nid:
+        cur.execute("update route_nodes set poi_id=%s, accessible=%s where id=%s",
+                    (poi_id, accessible, nid))
+    else:
+        nid = _one(
+            cur,
+            "insert into route_nodes (tenant_id, venue_id, floor_id, node_type, poi_id, "
+            "x, y, accessible) values (%s, %s, %s, %s, %s, %s, %s, %s) returning id",
+            (tenant_id, venue_id, floor_id, node_type, poi_id, x, y, accessible),
+        )
+    return nid
+
+
+def _upsert_edge(
+    cur, tenant_id: int, venue_id: int, frm: int, to: int, edge_type: str,
+    distance: float, weight: float, accessible: bool, bidirectional: bool,
+) -> None:
+    for a, b in ((frm, to), (to, frm)) if bidirectional else ((frm, to),):
+        cur.execute(
+            "insert into route_edges (tenant_id, venue_id, from_node_id, to_node_id, "
+            "edge_type, distance_meter, weight, accessible, is_bidirectional) "
+            "values (%s, %s, %s, %s, %s, %s, %s, %s, %s) "
+            "on conflict (from_node_id, to_node_id, edge_type) do update set "
+            "distance_meter=excluded.distance_meter, weight=excluded.weight, "
+            "accessible=excluded.accessible, is_bidirectional=excluded.is_bidirectional",
+            (tenant_id, venue_id, a, b, edge_type, distance, weight, accessible, bidirectional),
+        )
+
+
+def _seed_route_graph(
+    cur, tenant_id: int, venue_id: int, floor_ids: dict[str, int],
+    tv: dict, pois_ctx: list[dict], poi_id_map: dict,
+) -> None:
+    """确定性生成路网：每层走廊 trunk，POI/设施就近接入，电梯/扶梯跨层。
+
+    楼层间用同一 (category, x, y) 配对；扶梯东（x=850）上行、西（x=350）下行，
+    单向且 accessible=false（推车/轮椅走直梯）。
+    """
+    scale = float(tv["map_layers"]["F1"]["scale_meter"])
+    elevations = {f["name"]: float(f["elevation"]) for f in tv["floors"]}
+
+    def walk_edge(fid: int, a: tuple, b: tuple) -> None:
+        d2 = round(((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5 * scale, 2)
+        na = _get_or_create_node(cur, tenant_id, venue_id, fid, "waypoint", a[0], a[1], None, True)
+        nb = _get_or_create_node(cur, tenant_id, venue_id, fid, "waypoint", b[0], b[1], None, True)
+        _upsert_edge(cur, tenant_id, venue_id, na, nb, "walk", d2,
+                     round(d2 / WALK_SPEED_MPS, 3), True, True)
+
+    for fname, fid in floor_ids.items():
+        # 走廊 trunk：北排链 + 南排链 + 三条纵向连接
+        walk_edge(fid, (150.0, 260.0), (600.0, 260.0))
+        walk_edge(fid, (600.0, 260.0), (1050.0, 260.0))
+        walk_edge(fid, (150.0, 560.0), (600.0, 560.0))
+        walk_edge(fid, (600.0, 560.0), (1050.0, 560.0))
+        walk_edge(fid, (150.0, 260.0), (150.0, 560.0))
+        walk_edge(fid, (600.0, 260.0), (600.0, 560.0))
+        walk_edge(fid, (1050.0, 260.0), (1050.0, 560.0))
+
+    def nearest_waypoint(x: float, y: float) -> tuple:
+        return min(CORRIDOR_POINTS, key=lambda w: (w[0] - x) ** 2 + (w[1] - y) ** 2)
+
+    # POI/设施节点 + 就近接入
+    vertical_nodes: dict[tuple, dict] = {}  # (category, x, y) -> {floor_name: node_id}
+    for row in pois_ctx:
+        fid = floor_ids[row["floor"]]
+        node_type = row["category"] if row["category"] in ("elevator", "escalator") else "poi_link"
+        nid = _get_or_create_node(cur, tenant_id, venue_id, fid, node_type,
+                                  row["x"], row["y"], poi_id_map.get(row["name"]), True)
+        if node_type != "poi_link":
+            vertical_nodes.setdefault((node_type, row["x"], row["y"]), {})[row["floor"]] = nid
+        wx, wy = nearest_waypoint(row["x"], row["y"])
+        wid = _get_or_create_node(cur, tenant_id, venue_id, fid, "waypoint", wx, wy, None, True)
+        d2 = round(((wx - row["x"]) ** 2 + (wy - row["y"]) ** 2) ** 0.5 * scale, 2)
+        _upsert_edge(cur, tenant_id, venue_id, nid, wid, "walk", d2,
+                     round(d2 / WALK_SPEED_MPS, 3), True, True)
+
+    # 跨层边：按 (category, x, y) 配对，楼层按 level 排序取相邻对
+    floor_order = sorted(floor_ids, key=lambda n: int({"B1": -1, "F1": 1, "F2": 2}[n]))
+    for (cat, x, y), by_floor in vertical_nodes.items():
+        floors_present = [f for f in floor_order if f in by_floor]
+        for lower, upper in zip(floors_present, floors_present[1:]):
+            dist = abs(elevations[upper] - elevations[lower])
+            if cat == "elevator":
+                _upsert_edge(cur, tenant_id, venue_id, by_floor[lower], by_floor[upper],
+                             "elevator", round(dist, 2),
+                             round(ELEVATOR_RIDE_S + ELEVATOR_PENALTY_S, 3), True, True)
+            else:  # 扶梯：东（x 大）上行，西（x 小）下行，单向、不无障碍
+                if x >= 600.0:
+                    _upsert_edge(cur, tenant_id, venue_id, by_floor[lower], by_floor[upper],
+                                 "escalator", round(dist, 2),
+                                 round(ESCALATOR_RIDE_S + ESCALATOR_PENALTY_S, 3), False, False)
+                else:
+                    _upsert_edge(cur, tenant_id, venue_id, by_floor[upper], by_floor[lower],
+                                 "escalator", round(dist, 2),
+                                 round(ESCALATOR_RIDE_S + ESCALATOR_PENALTY_S, 3), False, False)
+
+
 def run_seed(dsn: str | None = None) -> dict[str, int]:
     """执行完整 seed，返回各表行数（供测试断言幂等与规模）。"""
     with psycopg.connect(dsn or _dsn()) as conn:
@@ -390,6 +514,7 @@ def run_seed(dsn: str | None = None) -> dict[str, int]:
                 if store_ctx:
                     _seed_poi_intros(cur, tenant_id, venue_id, tv["venue"]["name"],
                                      store_ctx, cat_names, poi_id_map)
+                _seed_route_graph(cur, tenant_id, venue_id, floor_ids, tv, pois_ctx, poi_id_map)
 # ③④⑤ 在此追加：pois/facilities → activities/coupons → knowledge/eval 基线
     return count_rows(dsn or _dsn())
 
