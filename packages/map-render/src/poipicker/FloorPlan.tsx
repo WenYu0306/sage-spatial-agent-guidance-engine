@@ -2,7 +2,13 @@
 
 import { useRef } from "react";
 import { clientToSvg, inBounds, snap } from "../lib/svgCoords.ts";
-import type { PoiPoint } from "../lib/types.ts";
+/** 渲染标记只需四个字段；PoiPoint 结构天然满足。 */
+export interface MapMarker {
+  name: string;
+  floor: string;
+  x: number;
+  y: number;
+}
 
 const CORRIDORS: Array<[number, number, number, number]> = [
   // 与 seed CORRIDOR_POINTS 对应：北排/南排/三条纵向连接
@@ -15,15 +21,17 @@ const CORRIDORS: Array<[number, number, number, number]> = [
 
 interface Props {
   floor: string;
-  points: PoiPoint[];
-  draft: PoiPoint | null;
-  onPick: (x: number, y: number) => void;
+  points: MapMarker[];
+  draft?: { x: number; y: number } | null;
+  onPick?: (x: number, y: number) => void;
+  overlay?: React.ReactNode;
 }
 
-export function FloorPlan({ floor, points, draft, onPick }: Props) {
+export function FloorPlan({ floor, points, draft = null, onPick, overlay }: Props) {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   function handleClick(e: React.MouseEvent<SVGSVGElement>) {
+    if (!onPick) return;
     const svg = svgRef.current;
     if (!svg) return;
     const { x, y } = clientToSvg(svg, e.clientX, e.clientY);
@@ -58,6 +66,7 @@ export function FloorPlan({ floor, points, draft, onPick }: Props) {
           <circle cx={draft.x} cy={draft.y} r={4} fill="#dc2626" />
         </g>
       )}
+      {overlay}
     </svg>
   );
 }
