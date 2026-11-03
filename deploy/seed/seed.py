@@ -125,6 +125,12 @@ def _seed_rbac(cur, tenant_id: int, venue_id: int, floor_ids: dict, tv: dict,
             "on conflict do nothing",
             (uid, role_code, scope_venue, merchant_id),
         )
+        if merchant_id is not None:
+            # merchant_id 语义=商户锚点门店 poi_id（V1 无商户表，D-021）：
+            # 该门店行的 pois.merchant_id 指回自身，商户数据过滤以此为键
+            cur.execute(
+                "update pois set merchant_id=%s where id=%s and merchant_id is null",
+                (merchant_id, merchant_id))
     for dev in tv.get("devices") or []:
         cur.execute(
             "insert into devices (tenant_id, venue_id, floor_id, code, name, device_type, "
