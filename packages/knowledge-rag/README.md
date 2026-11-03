@@ -27,7 +27,8 @@ uv run --package knowledge-rag pytest packages/knowledge-rag/tests
 Top3 命中率：10/20 = 50%（provider=mock(待真实模型), threshold=0.05）
 ```
 
-**两种实测模式的命中数字**：① MockProvider（sha256 确定性向量，无语义）= 50%，仅证明管线贯通；② 配真实 key 后（如 DeepSeek，其 API 无 embeddings 端点、SDK 404 被规范转译为 ProviderUnavailableError）检索自动**降级关键词模式** = 50%，但命中语义精准（E03 火锅→餐饮层指南/云雀灶/石浪、E20→商场有多少家店），7 例明确返回空（ILIKE 仅取前 3 个二元组的已知简化）。**真实向量数字**需配一个有 embeddings 端点的供应商（OpenAI / SiliconFlow bge-m3 / 阿里 text-embedding-v3 等），DeepSeek 的 key 适合 M5 的 chat（deepseek-chat 实测 200）。embedding 维度 1024（`EMBED_DIM`，Provider 经 dimensions 参数对齐 Matryoshka 模型）。
+**三档实测数字（20 问 Top3 命中率，脚本自动标注模式）**：
+① MockProvider（sha256 伪向量）= 50%，仅证明管线贯通；② 关键词降级模式 = 50%（Provider 404/不可用时自动触发），命中语义精准但覆盖窄（ILIKE 仅取前 3 个二元组）；③ **真实向量（阿里百炼 text-embedding-v3，1024 维，阈值 0.35）= 85%（17/20）**——语义命中如"便宜的午餐"→轻食沙拉、"咖啡店"→三家咖啡店全中。3 个未命中均可解释：E16 领券数据在 activities 表（M5 工具侧）、E19 天气本应走兜底（M5）、E04 为排序未进 Top3（M7 权重可调）。chat=DeepSeek、embed=百炼的双供应商由 Provider 双端点配置支撑（EMBEDDING_* 缺省回落 LLM_*）。
 
 ## 如何摘出复用到其他项目
 

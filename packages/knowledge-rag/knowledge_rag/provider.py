@@ -33,6 +33,7 @@ class ProviderConfig:
     embedding_base_url: str          # embedding 可独立供应商（如 chat=DeepSeek、embed=百炼）
     embedding_api_key: str | None    # 缺省回落 base_url/api_key
     embed_dim: int
+    embed_batch_size: int            # 单次 API 调用最大文本数（百炼上限 10）
     timeout_s: float
     max_retries: int
     daily_limit: int
@@ -49,6 +50,7 @@ class ProviderConfig:
             embedding_base_url=os.environ.get("EMBEDDING_BASE_URL") or base_url,
             embedding_api_key=os.environ.get("EMBEDDING_API_KEY") or api_key,
             embed_dim=int(os.environ.get("EMBED_DIM", "1024")),
+            embed_batch_size=int(os.environ.get("EMBED_BATCH_SIZE", "10")),
             timeout_s=float(os.environ.get("LLM_TIMEOUT_S", "30")),
             max_retries=int(os.environ.get("LLM_MAX_RETRIES", "2")),
             daily_limit=int(os.environ.get("LLM_DAILY_LIMIT", "200")),

@@ -16,3 +16,4 @@
 - 2026-11-04 D-012 前端测试用 node:test 原生跑 TS（Node 24 strip types），不引入 vitest；组件交互以纯函数抽测 + 演示页人工验证，组件级 DOM 测试随 M10 后台任务再评估。
 - 2026-11-04 D-013 RAG 切片与限额：token 估算 CJK 1 字≈1 token/其余 4 字符≈1 token；切片 300-500、重叠 50（重叠预算受 500 上限约束）；每日限额按 API 调用次数计（进程内计数，多进程时 M5 换 Redis）；入库分批（16 条/次）调 embedding。
 - 2026-11-04 D-014 embedding 维度 1024（EMBED_DIM，Provider 经 dimensions 参数适配 text-embedding-3-small 等 Matryoshka 模型）；postgres 镜像换 pgvector/pgvector:pg16（直连 Docker Hub 超时，compose 走 daocloud 源）；检索阈值默认 0.35（RAG_THRESHOLD 可配），评测 hit 定义见 scripts/run_agent_eval.py。
+- 2026-11-04 D-013 更正：入库批大小改为配置 EMBED_BATCH_SIZE（默认 10，百炼 embeddings 单批上限），非固定 16；批超限报错经 ProviderUnavailableError 语义暴露。

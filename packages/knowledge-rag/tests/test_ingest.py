@@ -48,3 +48,18 @@ def test_ingest_chunks_have_vectors_and_metadata(provider):
         rows = cur.fetchall()
     for idx, tok, has_vec in rows:
         assert idx >= 0 and tok > 0 and has_vec
+
+
+def test_ingest_respects_provider_batch_limit(provider):
+    """批次不得超过供应商上限（百炼=10）：用计数桩记录每次调用的文本数。"""
+    calls: list[int] = []
+
+    class Counting:
+        config = provider.config
+
+        def embed(self, texts):
+            calls.append(len(texts))
+            return provider.embed(texts)
+
+    ingest_venue("山雀里·栖云广场", "shanqueli-demo", provider=Counting(), dsn=_dsn())
+    assert calls and all(n <= 10 for n in calls), f"批次超限：{calls}"

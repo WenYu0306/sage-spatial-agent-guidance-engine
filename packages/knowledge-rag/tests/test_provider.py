@@ -114,3 +114,8 @@ def test_embedding_endpoint_overrides(monkeypatch):
     cfg = ProviderConfig.from_env()
     assert cfg.embedding_base_url == "http://embed/v1"
     assert cfg.embedding_api_key == "sk-embed"
+
+
+def test_embed_batch_size_default_10(monkeypatch):
+    monkeypatch.delenv("EMBED_BATCH_SIZE", raising=False)
+    assert ProviderConfig.from_env().embed_batch_size == 10

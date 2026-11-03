@@ -48,7 +48,7 @@ def ingest_venue(venue_name: str, tenant_code: str, provider=None, dsn: str | No
             for i, piece in enumerate(split_into_chunks(content)):
                 pieces.append((doc_id, i, piece))
 
-        BATCH = 16
+        BATCH = provider.config.embed_batch_size  # 供应商上限（百炼=10）
         for start in range(0, len(pieces), BATCH):
             batch = pieces[start:start + BATCH]
             vecs = provider.embed([p[2] for p in batch])
