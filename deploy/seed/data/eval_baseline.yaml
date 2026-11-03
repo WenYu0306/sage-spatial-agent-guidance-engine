@@ -18,7 +18,7 @@ cases:
   - {id: E06, question: 带我去电影院, intent: navigate,
      tools: [poi.search, route.plan], answer_keys: [巨幕星云影院, F2, 路线], notes: ""}
   - {id: E07, question: 商场几点关门, intent: venue_info,
-     tools: [knowledge.query], answer_keys: [22:00, 出处], notes: "答案须带知识文档出处"}
+     tools: [knowledge.query], answer_keys: ["22:00", 出处], notes: "答案须带知识文档出处"}
   - {id: E08, question: 哪里有卖衣服的, intent: poi_search,
      tools: [poi.search, recommend.rank], answer_keys: [服饰, F1], notes: "F1 为服饰集中层"}
   - {id: E09, question: 有免费的 Wi-Fi 吗, intent: venue_info,
