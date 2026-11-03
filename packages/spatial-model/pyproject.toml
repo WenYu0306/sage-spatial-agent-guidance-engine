@@ -1,0 +1,14 @@
+[project]
+name = "spatial-model"
+version = "0.1.0"
+description = "M2 空间数据模型（场馆/楼层/POI/路网图）（占位，US-001）"
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.9,<1"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "spatial_model"

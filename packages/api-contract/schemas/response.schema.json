@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sage://m0/response",
+  "title": "统一响应体（ARCHITECTURE.md 8.1）",
+  "type": "object",
+  "required": ["code", "message", "data", "trace_id", "server_time"],
+  "additionalProperties": false,
+  "properties": {
+    "code": {
+      "type": "integer",
+      "description": "0=成功；非0=业务错误，取值必须在 schemas/error-codes.yaml 登记的码表内"
+    },
+    "message": { "type": "string" },
+    "data": {
+      "description": "业务数据；失败时可为 null"
+    },
+    "trace_id": {
+      "type": "string",
+      "pattern": "^tr_[0-9]{8}_[A-Za-z0-9]+$",
+      "description": "端层生成、贯穿全链路"
+    },
+    "server_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 带时区；库内存 UTC，展示层转 Asia/Shanghai"
+    }
+  },
+  "examples": [
+    {
+      "code": 0,
+      "message": "ok",
+      "data": {},
+      "trace_id": "tr_20261103_abc123",
+      "server_time": "2026-11-03T21:00:00+08:00"
+    }
+  ]
+}

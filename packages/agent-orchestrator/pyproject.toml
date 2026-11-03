@@ -1,0 +1,14 @@
+[project]
+name = "agent-orchestrator"
+version = "0.1.0"
+description = "M5 LangGraph Agent 编排（占位，US-001）"
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.9,<1"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "agent_orchestrator"

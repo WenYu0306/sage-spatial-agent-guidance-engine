@@ -1,0 +1,38 @@
+# M0 错误码注册表（ARCHITECTURE.md 8.2）。
+# 规则：新增错误码必须登记在此；validate.py 强制全局唯一、落在所属段内；HTTP 状态码按语义另行映射。
+segments:
+  - range: [1000, 1999]
+    name: 通用与鉴权
+    codes:
+      - { code: 1001, message: 未认证 }
+      - { code: 1003, message: 无权限 }
+      - { code: 1004, message: 租户不存在 }
+  - range: [2000, 2999]
+    name: 空间与路径
+    codes:
+      - { code: 2001, message: POI 不存在 }
+      - { code: 2003, message: 起终点不可达 }
+      - { code: 2004, message: 路网未构建 }
+  - range: [3000, 3999]
+    name: AI 能力
+    codes:
+      - { code: 3001, message: 模型不可用 }
+      - { code: 3002, message: 工具调用超时 }
+      - { code: 3003, message: 无相关知识 }
+      - { code: 3004, message: 已降级为关键词检索 }
+  - range: [4000, 4999]
+    name: 业务内容
+    codes:
+      - { code: 4001, message: 活动状态不允许 }
+      - { code: 4002, message: 优惠券已领完 }
+      - { code: 4003, message: 重复领取 }
+  - range: [5000, 5999]
+    name: 冻结能力
+    codes:
+      - { code: 5001, message: 语音能力未启用 }
+      - { code: 5002, message: 数字人能力未启用 }
+  - range: [9000, 9999]
+    name: 系统
+    codes:
+      - { code: 9001, message: 服务不可用 }
+      - { code: 9002, message: 限流 }

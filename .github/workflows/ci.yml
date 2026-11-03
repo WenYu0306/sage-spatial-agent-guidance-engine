@@ -1,0 +1,40 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-validate-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Python 工具链（uv workspace + dev 组）
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+
+      # Node 工具链（pnpm workspace）
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --no-frozen-lockfile
+
+      # 质量门（与本地 make 目标一致）
+      - name: lint（ruff + import-linter + eslint）
+        run: make lint
+      - name: validate（M0 契约校验）
+        run: make validate
+      - name: gen 一致性（契约生成物必须与源同步）
+        run: |
+          make gen
+          git diff --exit-code packages/api-contract/generated \
+            || { echo "generated/ 与契约源不同步：请先 make gen 再提交"; exit 1; }
+      - name: test
+        run: make test
+
+      # 数据库相关（migrate/seed）暂不在 CI 跑：M1 引入真实表结构后加 services 容器

@@ -1,0 +1,24 @@
+# M0 必带请求头（ARCHITECTURE.md 8.3）。
+# required_for 取值：all / admin / screen / mobile（对应 X-Client 三端）。
+headers:
+  - name: X-Tenant-Id
+    type: string
+    required_for: [all]
+    description: 租户 ID，所有接口必带
+  - name: X-Trace-Id
+    type: string
+    required_for: [all]
+    description: 端层生成，贯穿全链路；无则网关补
+  - name: Authorization
+    type: string
+    required_for: [all]
+    description: 认证凭据（Bearer Token）
+  - name: X-Device-Id
+    type: string
+    required_for: [screen, mobile]
+    description: 设备 ID，大屏/手机端必带
+  - name: X-Client
+    type: string
+    required_for: [screen, admin, mobile]
+    enum: [admin, screen, mobile]
+    description: 客户端类型

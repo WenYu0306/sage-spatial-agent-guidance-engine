@@ -1,0 +1,14 @@
+[project]
+name = "route-engine"
+version = "0.1.0"
+description = "M3 路径规划（A*/Dijkstra + 跨楼层边权重）（占位，US-001）"
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.9,<1"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "route_engine"

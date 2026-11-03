@@ -1,0 +1,14 @@
+[project]
+name = "voice-adapter"
+version = "0.1.0"
+description = "A1 语音适配器接口 + 空实现（冻结）（占位，US-001）"
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.9,<1"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "voice_adapter"

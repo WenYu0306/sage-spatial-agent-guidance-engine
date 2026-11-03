@@ -1,0 +1,9 @@
+{
+  "name": "@sage/screen-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node -e \"console.log('screen-web: no tests yet (scaffold)')\""
+  }
+}

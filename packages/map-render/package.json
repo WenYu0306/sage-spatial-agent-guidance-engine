@@ -1,0 +1,9 @@
+{
+  "name": "@sage/map-render",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node -e \"console.log('map-render: no tests yet (scaffold)')\""
+  }
+}

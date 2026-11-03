@@ -1,0 +1,32 @@
+# 环境与密钥（只提交 .env.example）
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+
+# Node
+node_modules/
+packages/*/dist/
+*.tsbuildinfo
+
+# uv / pnpm
+# uv.lock、pnpm-lock.yaml 正常应提交；脚手架阶段依赖未定稿，暂不锁
+uv.lock
+pnpm-lock.yaml
+
+# 迁移/seed 本地产物
+**/__pycache__/
+
+# IDE / 系统
+.DS_Store
+.idea/
+.vscode/

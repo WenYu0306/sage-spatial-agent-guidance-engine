@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sage://m0/event",
+  "title": "领域事件（ARCHITECTURE.md 8.5）",
+  "type": "object",
+  "required": [
+    "event_id", "tenant_id", "venue_id", "event_type",
+    "subject_type", "subject_id", "actor_type", "actor_id",
+    "payload", "occurred_at", "trace_id"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "event_id": { "type": "string", "description": "事件唯一 ID" },
+    "tenant_id": { "type": "integer", "description": "租户 ID（PRD 6.0：BIGINT）" },
+    "venue_id": { "type": "integer", "description": "场馆 ID" },
+    "event_type": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]*$",
+      "description": "事件类型枚举在 M0 定义（登记于本文件 event_types 字段），新增必须登记"
+    },
+    "subject_type": { "type": "string" },
+    "subject_id": { "type": "string" },
+    "actor_type": {
+      "type": "string",
+      "description": "操作者类型；枚举待 M1 定稿，当前不做硬约束"
+    },
+    "actor_id": { "type": "string", "description": "操作者 ID（匿名设备用 device_id）" },
+    "payload": { "type": "object", "description": "事件负载，结构由各 event_type 定义" },
+    "occurred_at": { "type": "string", "format": "date-time", "description": "发生时间，ISO 8601 带时区" },
+    "trace_id": { "type": "string", "pattern": "^tr_[0-9]{8}_[A-Za-z0-9]+$" }
+  },
+  "event_types": [],
+  "examples": [
+    {
+      "event_id": "evt_20261103_000001",
+      "tenant_id": 1,
+      "venue_id": 1,
+      "event_type": "agent_chat_completed",
+      "subject_type": "session",
+      "subject_id": "sess_abc",
+      "actor_type": "customer",
+      "actor_id": "device_001",
+      "payload": { "tool_calls": 3, "degraded": false },
+      "occurred_at": "2026-11-03T21:00:00+08:00",
+      "trace_id": "tr_20261103_abc123"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+[project]
+name = "content-service"
+version = "0.1.0"
+description = "M8 POI/活动/优惠/知识 CRUD 业务服务（占位，US-001）"
+requires-python = ">=3.12"
+dependencies = []
+
+[build-system]
+requires = ["uv_build>=0.9,<1"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "content_service"

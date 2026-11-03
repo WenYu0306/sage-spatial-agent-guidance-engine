@@ -1,0 +1,64 @@
+[tool.uv.workspace]
+# 仅 Python 包；TS 包（map-render/admin-web/screen-web/mobile-h5）归 pnpm workspace
+members = [
+    "packages/api-contract",
+    "packages/platform-core",
+    "packages/spatial-model",
+    "packages/route-engine",
+    "packages/agent-orchestrator",
+    "packages/knowledge-rag",
+    "packages/recommender",
+    "packages/voice-adapter",
+    "packages/avatar-adapter",
+    "packages/content-service",
+    "packages/analytics-service",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.13",
+    "import-linter>=2.3",
+    "alembic>=1.14",
+    "psycopg[binary]>=3.2",
+]
+
+[tool.importlinter]
+root_packages = [
+    "platform_core", "spatial_model", "route_engine", "agent_orchestrator",
+    "knowledge_rag", "recommender", "voice_adapter", "avatar_adapter",
+    "content_service", "analytics_service",
+]
+
+# 内核纯净性（ARCHITECTURE 3.2 第 3 条）：M2/M3/M5/M6/M7 禁止 import 业务模块
+[[tool.importlinter.contracts]]
+name = "内核禁止依赖业务模块"
+type = "forbidden"
+source_modules = [
+    "spatial_model", "route_engine", "agent_orchestrator",
+    "knowledge_rag", "recommender",
+]
+forbidden_modules = ["content_service", "analytics_service"]
+
+# 模块独立性（ARCHITECTURE 4.1 第 3 条）：跨包只走 M0 契约（HTTP/事件），
+# 禁止 import 其他模块的 Python 实现；api-contract 生成的共享类型除外（暂无）
+[[tool.importlinter.contracts]]
+name = "模块间禁止互相 import"
+type = "independence"
+modules = [
+    "platform_core", "spatial_model", "route_engine", "agent_orchestrator",
+    "knowledge_rag", "recommender", "voice_adapter", "avatar_adapter",
+    "content_service", "analytics_service",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages/*/tests", "tests"]
+# 多包同名测试模块（test_placeholder.py × N）需要 importlib 模式避免 import 冲突
+addopts = "--import-mode=importlib"

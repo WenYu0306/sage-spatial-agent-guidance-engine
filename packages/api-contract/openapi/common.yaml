@@ -1,0 +1,58 @@
+openapi: 3.1.0
+info:
+  title: SAGE 统一契约公共骨架（M0）
+  version: 0.1.0
+  description: >
+    各模块在 packages/api-contract/openapi/<module>.yaml 中定义自己的 paths，
+    并通过 $ref 引用 common.yaml 的共享组件。错误码语义见 schemas/error-codes.yaml，
+    必带请求头登记于 schemas/headers.yaml，分页与时间约定见 schemas/pagination.schema.json。
+paths: {}
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    XTenantId:
+      name: X-Tenant-Id
+      in: header
+      required: true
+      description: 租户 ID（schemas/headers.yaml）
+      schema:
+        type: string
+    XTraceId:
+      name: X-Trace-Id
+      in: header
+      required: true
+      description: 端层生成，贯穿全链路；无则网关补
+      schema:
+        type: string
+    XDeviceId:
+      name: X-Device-Id
+      in: header
+      required: false
+      description: 大屏/手机端必带
+      schema:
+        type: string
+    XClient:
+      name: X-Client
+      in: header
+      required: false
+      description: 客户端类型
+      schema:
+        type: string
+        enum: [admin, screen, mobile]
+  responses:
+    UnifiedOk:
+      description: 统一响应体（ARCHITECTURE.md 8.1，code=0）
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [code, message, data, trace_id, server_time]
+            properties:
+              code: { type: integer, example: 0 }
+              message: { type: string, example: ok }
+              data: {}
+              trace_id: { type: string, example: tr_20261103_abc123 }
+              server_time: { type: string, example: "2026-11-03T21:00:00+08:00" }

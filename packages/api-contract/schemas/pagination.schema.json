@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "sage://m0/pagination",
+  "title": "分页约定（ARCHITECTURE.md 8.4）",
+  "$defs": {
+    "request": {
+      "title": "分页请求参数",
+      "type": "object",
+      "properties": {
+        "page": { "type": "integer", "minimum": 1, "default": 1, "description": "从 1 起" },
+        "page_size": { "type": "integer", "minimum": 1, "maximum": 100, "default": 20 }
+      }
+    },
+    "response": {
+      "title": "分页响应包裹",
+      "type": "object",
+      "required": ["total", "page", "page_size", "items"],
+      "additionalProperties": false,
+      "properties": {
+        "total": { "type": "integer", "minimum": 0 },
+        "page": { "type": "integer", "minimum": 1 },
+        "page_size": { "type": "integer", "minimum": 1, "maximum": 100 },
+        "items": { "type": "array" }
+      }
+    }
+  },
+  "examples": [
+    { "total": 42, "page": 1, "page_size": 20, "items": [] }
+  ]
+}
