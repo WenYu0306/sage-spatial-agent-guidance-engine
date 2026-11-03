@@ -1,0 +1,15 @@
+# M7 推荐权重（PRD 8.4；F-16：V1 固定配置文件，不做后台可调）。
+# 权重和必须为 1.0；调权走 git 修订，不进运行时接口。
+factors:
+  distance: 0.22      # 1 - min(distance/1000, 1)
+  floor_diff: 0.10    # 1 - min(floor_diff/5, 1)
+  business: 0.15      # 营业中 1.0；即将打烊 0.4；休息 0（候选直接过滤）
+  promotion: 0.15     # 调用方传入的营销旗标（业务表不进内核）
+  merchant: 0.10      # poi.recommend_weight min-max 归一化
+  hot: 0.10           # poi.hot_score min-max 归一化
+  tag_match: 0.13     # 意图标签与候选标签的交并比（意图无标签时中性 0.5）
+  convenience: 0.05   # 1 - min(距主动线节点距离/300, 1)
+scales:
+  distance_m: 1000
+  floor_diff: 5
+  trunk_m: 300
