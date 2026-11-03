@@ -407,6 +407,10 @@ def count_rows(dsn: str | None = None) -> dict[str, int]:
 
 def main() -> int:
     print("== demo seed 开始（数据源：deploy/seed/data）==")
+    files = sorted(DATA_DIR.glob("*.yaml"))
+    print(f"数据文件清单（{len(files)} 个）：")
+    for f in files:
+        print(f"  data/{f.name}")
     counts = run_seed()
     print("== seed 完成，各表行数 ==")
     for table, n in counts.items():

@@ -1,0 +1,49 @@
+# Agent 评测基线（手册 7.2 要求 5；问句逐条对照 PRD 附录 B；意图对齐 PRD 8.1，工具对齐 8.2）。
+# answer_keys 为期望答案必含的关键词要点；notes 记录该问句的已知坑与解析策略。
+version: 1
+venue: 山雀里·栖云广场
+cases:
+  - {id: E01, question: 卫生间在哪里, intent: facility_nearest,
+     tools: [facility.nearest, route.plan], answer_keys: [卫生间, 楼层, 路线], notes: ""}
+  - {id: E02, question: 最近的母婴室在哪, intent: facility_nearest,
+     tools: [facility.nearest, route.plan], answer_keys: [母婴室, 楼层, 路线],
+     notes: "基线默认顾客位于 F1；实际起点由请求 device 位置决定"}
+  - {id: E03, question: 我想吃火锅, intent: poi_search,
+     tools: [poi.search, recommend.rank], answer_keys: [云雀灶火锅, 石浪火锅, 灶门炭火锅], notes: ""}
+  - {id: E04, question: 有没有适合情侣吃饭的地方, intent: poi_recommend,
+     tools: [poi.search, promotion.list, knowledge.query, recommend.rank, route.plan],
+     answer_keys: [白桦西餐, 约会], notes: "约会场景：命中带约会标签的餐饮并给路线"}
+  - {id: E05, question: 今天有什么优惠, intent: promotion_query,
+     tools: [promotion.list, poi.detail], answer_keys: [活动, 优惠], notes: "demo 时间窗内活动券列表非空"}
+  - {id: E06, question: 带我去电影院, intent: navigate,
+     tools: [poi.search, route.plan], answer_keys: [巨幕星云影院, F2, 路线], notes: ""}
+  - {id: E07, question: 商场几点关门, intent: venue_info,
+     tools: [knowledge.query], answer_keys: [22:00, 出处], notes: "答案须带知识文档出处"}
+  - {id: E08, question: 哪里有卖衣服的, intent: poi_search,
+     tools: [poi.search, recommend.rank], answer_keys: [服饰, F1], notes: "F1 为服饰集中层"}
+  - {id: E09, question: 有免费的 Wi-Fi 吗, intent: venue_info,
+     tools: [knowledge.query], answer_keys: [QiYun-Mall-Free, 出处], notes: ""}
+  - {id: E10, question: 从这里到停车场怎么走, intent: navigate,
+     tools: [poi.search, route.plan], answer_keys: [停车场, B1, 路线], notes: ""}
+  - {id: E11, question: 有电梯吗，我推婴儿车, intent: facility_nearest,
+     tools: [facility.nearest, route.plan], answer_keys: [直梯, 无障碍, 路线], notes: "无障碍需求：期望给直梯而非扶梯"}
+  - {id: E12, question: 三楼有什么吃的, intent: poi_search,
+     tools: [poi.search, recommend.rank], answer_keys: [F2, 餐饮], notes: "demo 无 F3：期望解析到最高层 F2 或澄清反问，评测时按澄清也算通过"}
+  - {id: E13, question: 有没有便宜的午餐, intent: poi_recommend,
+     tools: [poi.search, promotion.list, recommend.rank],
+     answer_keys: [B1, 美食市集], notes: "便宜→B1 快餐市集 + 满减券组合"}
+  - {id: E14, question: 服务台在哪, intent: facility_nearest,
+     tools: [facility.nearest, route.plan], answer_keys: [服务台, F1, 路线], notes: ""}
+  - {id: E15, question: 这家店现在营业吗, intent: venue_info,
+     tools: [knowledge.query, poi.detail], answer_keys: [营业时间], notes: "依赖前轮指代（这家店）；评测时先注入上一轮 poi 上下文再判"}
+  - {id: E16, question: 帮我领那张满 100 减 20 的券, intent: coupon_claim,
+     tools: [coupon.claim], answer_keys: [满 100 减 20 美食券, 领取成功],
+     notes: "幂等键 = coupon_id+anonymous_id；需先有会话上下文中的券卡片"}
+  - {id: E17, question: 附近有什么咖啡店, intent: poi_search,
+     tools: [poi.search, recommend.rank], answer_keys: [咖啡, 列表], notes: ""}
+  - {id: E18, question: 超市在几楼, intent: poi_search,
+     tools: [poi.search], answer_keys: [B1, 云雀优选超市], notes: ""}
+  - {id: E19, question: 今天天气怎么样, intent: fallback,
+     tools: [knowledge.query], answer_keys: [无此信息, 不编造], notes: "兜底话术：说明不提供天气信息"}
+  - {id: E20, question: 你们商场有多少家店, intent: venue_info,
+     tools: [knowledge.query], answer_keys: [68, 出处], notes: "答案须带出处（FAQ 文档《商场有多少家店》）"}

@@ -139,3 +139,28 @@ def test_knowledge_files_structure():
         assert d["title"] and len(d["content"]) >= 20, f"{d['title']} 内容过短"
     titles = [d["title"] for d in guides + faqs]
     assert len(titles) == len(set(titles)), "指南/FAQ 标题不得重复"
+
+
+def test_eval_baseline_structure():
+    """评测基线：20 问句对齐附录 B；意图/工具枚举对齐 PRD 8.1/8.2。"""
+    data = _load("eval_baseline.yaml")
+    cases = data["cases"]
+    assert len(cases) == 20, f"评测问句应 20 条，实际 {len(cases)}"
+    ids = [c["id"] for c in cases]
+    assert len(ids) == len(set(ids)), "评测问句 id 不得重复"
+    intents = {"facility_nearest", "poi_search", "poi_recommend", "promotion_query",
+               "navigate", "venue_info", "coupon_claim", "fallback"}
+    tools = {"poi.search", "route.plan", "facility.nearest", "promotion.list",
+             "knowledge.query", "recommend.rank", "coupon.claim", "poi.detail"}
+    for c in cases:
+        assert c["question"], f"{c['id']} 缺问句"
+        assert c["intent"] in intents, f"{c['id']} 意图 {c['intent']} 不在 PRD 8.1 枚举"
+        assert set(c["tools"]) <= tools, f"{c['id']} 工具链不在 PRD 8.2 八工具内"
+        assert c["answer_keys"], f"{c['id']} 缺期望答案要点"
+    questions = [c["question"] for c in cases]
+    assert "帮我领那张满 100 减 20 的券" in questions, "必须含附录 B 问句 16"
+    assert "今天有什么优惠" in questions, "必须含附录 B 问句 5"
+    e19 = next(c for c in cases if c["question"].startswith("今天天气"))
+    assert e19["intent"] == "fallback", "天气问句必须走 fallback（不编造）"
+    e12 = next(c for c in cases if "三楼" in c["question"])
+    assert e12.get("notes"), "E12 缺处理说明（demo 无 F3，须记录解析策略）"
