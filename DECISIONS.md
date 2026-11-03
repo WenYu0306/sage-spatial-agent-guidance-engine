@@ -9,3 +9,6 @@
 - 2026-11-03 D-005 错误码六段按 ARCHITECTURE 8.2（1xxx 通用鉴权 / 2xxx 空间路径 / 3xxx AI / 4xxx 业务内容 / 5xxx 冻结能力 / 9xxx 系统）；码表唯一登记于 schemas/error-codes.yaml，validate 强制唯一性与分段归属。
 - 2026-11-03 D-006 事件 schema 必填字段按 ARCHITECTURE 8.5 冻结；event_type 枚举登记于 event.schema.json 的 event_types 字段（当前为空，M5/M9 任务时填充），actor_type 枚举待 M1 定稿。
 - 2026-11-03 D-007 前端边界检查脚手架阶段用 eslint-plugin-boundaries + .js 演示文件验证；前端代码落地时引入 @typescript-eslint 并升级规则（届时登记 REUSE.md）。
+- 2026-11-04 D-008 demo 数据源 = deploy/seed/data/*.yaml，自然键幂等 upsert（首遍 INSERT 后续 UPDATE，不删不重灌）；评测基线为文件资产不入库，运行记录仍写 packages/agent-orchestrator/EVAL.md。
+- 2026-11-04 D-009 poi_intro 知识文档由 pois 数据派生生成（不手写），保证文档与数据一致；"100 篇"口径 = 68 店铺介绍 + 17 场地指南 + 15 FAQ，设施不生成介绍。
+- 2026-11-04 D-010 演示运营账号口令走环境变量 SEED_DEMO_ADMIN_PASSWORD（bcrypt cost 12）；重复 seed 不覆写已存在账号的口令。
