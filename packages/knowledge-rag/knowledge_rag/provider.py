@@ -80,6 +80,10 @@ class MockProvider:
         self.config = config
         self.counter = _DailyCounter()
 
+    def chat(self, messages: list[dict], **_kw) -> tuple[str, dict]:
+        self.counter.bump(self.config.daily_limit)
+        return '{"intent": "fallback", "slots": {}}', {"tokens_in": 0, "tokens_out": 0}
+
     def embed(self, texts: list[str]) -> list[list[float]]:
         self.counter.bump(self.config.daily_limit)  # 与真实 Provider 一致：按 API 调用次数计
         dim = self.config.embed_dim
@@ -114,6 +118,27 @@ class LLMProvider:
             timeout=config.timeout_s,
             max_retries=config.max_retries,
         )
+
+    def chat(
+        self, messages: list[dict], *, temperature: float = 0.2, max_tokens: int = 1024,
+    ) -> tuple[str, dict]:
+        """chat 补全（M5 意图解析/生成）。返回 (content, usage)。"""
+        self.counter.bump(self.config.daily_limit)
+        try:
+            resp = self._client.chat.completions.create(
+                model=self.config.chat_model,
+                messages=messages,
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+        except openai.OpenAIError as exc:
+            raise ProviderUnavailableError(f"chat 失败：{exc}") from exc
+        content = resp.choices[0].message.content or ""
+        usage = {
+            "tokens_in": getattr(resp.usage, "prompt_tokens", 0) or 0,
+            "tokens_out": getattr(resp.usage, "completion_tokens", 0) or 0,
+        }
+        return content, usage
 
     def embed(self, texts: list[str]) -> list[list[float]]:
         if not texts:
