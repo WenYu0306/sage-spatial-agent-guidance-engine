@@ -1,9 +1,9 @@
 [project]
 name = "knowledge-rag"
 version = "0.1.0"
-description = "M6 自建 RAG 管道：切片/向量化/检索/出处/阈值（pgvector + 自建 Provider）"
+description = "M6 自建 RAG 管道 + HTTP 服务（pgvector 检索 + 自建 Provider）"
 requires-python = ">=3.12"
-dependencies = ["openai>=2.0", "psycopg[binary]>=3.2"]
+dependencies = ["openai>=2.0", "psycopg[binary]>=3.2", "fastapi>=0.162", "uvicorn>=0.54"]
 
 [build-system]
 requires = ["uv_build>=0.9,<1"]

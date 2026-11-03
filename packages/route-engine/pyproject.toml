@@ -3,7 +3,7 @@ name = "route-engine"
 version = "0.1.0"
 description = "M3 路径规划（networkx A* + 跨楼层边权重 + 无障碍过滤）"
 requires-python = ">=3.12"
-dependencies = ["networkx>=3.7"]
+dependencies = ["networkx>=3.7", "psycopg[binary]>=3.2", "fastapi>=0.162", "uvicorn>=0.54"]
 
 [build-system]
 requires = ["uv_build>=0.9,<1"]
