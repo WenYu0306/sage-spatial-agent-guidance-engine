@@ -1,0 +1,19 @@
+# 场地指南知识文档（17 篇，venue_guide；店铺介绍 68 篇由 seed 依 pois 数据生成，FAQ 另见 knowledge_faq.yaml）。
+docs:
+  - {doc_type: venue_guide, title: 营业时间说明, content: "山雀里·栖云广场营业时间为每天 10:00-22:00；B1 部分餐饮商铺 08:30 起营业早市，影院最晚场次 22:30。节假日营业时间以商场公告为准。"}
+  - {doc_type: venue_guide, title: 停车指南, content: "停车场位于 B1 层，A 口在西侧、B 口在东侧，开放时间 06:00-23:00。首小时 5 元、之后每小时 3 元；单日消费满 100 元可凭小票到 F1 服务台办理 2 小时免费停车。"}
+  - {doc_type: venue_guide, title: 会员规则, content: "会员可在 F1 服务台或商场小程序注册，消费 1 元累计 1 积分；每月 8 日为会员日，当日消费双倍积分；积分可兑换停车券与礼品。"}
+  - {doc_type: venue_guide, title: 无线网络, content: "全馆提供免费 Wi-Fi，网络名 QiYun-Mall-Free，连接后通过手机短信验证即可使用，信号覆盖 B1 至 F2 公共区域。"}
+  - {doc_type: venue_guide, title: 母婴服务, content: "母婴室位于 F1 与 F2 层卫生间旁，配备换尿布台、独立哺乳间与温水；B1 服务台提供婴儿车免费借用。"}
+  - {doc_type: venue_guide, title: 无障碍服务, content: "每层设有直梯连通 B1 至 F2；各层卫生间内设无障碍厕位；F1 服务台提供轮椅借用（需押金 200 元）。"}
+  - {doc_type: venue_guide, title: 失物招领, content: "拾获与遗失物品均登记于 F1 服务台，保管期 30 天；可到服务台询问或拨打场内内线 8001 查询。"}
+  - {doc_type: venue_guide, title: 充电服务, content: "B1 停车场 A 口旁设有新能源充电桩；手机充电可在 F1 服务台借用共享充电宝，归还计时计费。"}
+  - {doc_type: venue_guide, title: 寄存服务, content: "F1 服务台提供行李寄存，小件每件每日 10 元，过夜寄存另行计费；贵重物品请随身携带。"}
+  - {doc_type: venue_guide, title: 发票指引, content: "店铺消费请向所在门店索取电子发票；同日多张小票需合并开票的，可到 F1 服务台协助办理。"}
+  - {doc_type: venue_guide, title: 宠物政策, content: "除导盲犬等工作犬外，宠物不可带入馆内；B1 服务台旁设有宠物临时寄存笼，免费使用。"}
+  - {doc_type: venue_guide, title: 交通指南, content: "商场位于虚构市云雀区栖枝街 88 号；地铁 2 号线栖云站 C 口步行约 5 分钟；公交 11 路、26 路至栖枝街站下。"}
+  - {doc_type: venue_guide, title: 餐饮层指南, content: "F2 为正餐层，集中火锅/中餐/日料/西餐；B1 为美食市集，以面食快餐为主。节假日用餐高峰建议先到店取号。"}
+  - {doc_type: venue_guide, title: 优惠券使用说明, content: "优惠券在参与门店结账时出示券码核销，每单限用一张，特价商品除外；券过期不可补发，领取记录可在小程序查看。"}
+  - {doc_type: venue_guide, title: 影院购票, content: "巨幕星云影院位于 F2 东北角，支持现场购票与小程序购票；每周二为半价日，全场影片半价（节假日与首映场除外）。"}
+  - {doc_type: venue_guide, title: 儿童服务, content: "B1 豆豆乐园与 F2 云上乐园均需家长陪同入场；儿童走失可就近求助服务台，F1 服务台负责广播寻人并联动各楼层。"}
+  - {doc_type: venue_guide, title: 退换货引导, content: "商品退换货请在购买门店办理，需保留小票与商品吊牌；食品与贴身衣物拆封后不支持退换，具体以各门店公示为准。"}

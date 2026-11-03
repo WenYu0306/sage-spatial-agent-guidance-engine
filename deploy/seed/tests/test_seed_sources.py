@@ -100,3 +100,42 @@ def test_pois_files_structure():
 
     stores = [p for p in all_pois if p["_src"] != "facilities.yaml"]
     assert 60 <= len(stores) <= 80, f"店铺数 {len(stores)} 应在 60—80（手册 7.2 要求 2）"
+
+
+def test_activities_structure():
+    """活动+优惠券合计 10 条；poi 引用必须存在于店铺文件；时间区间合法。"""
+    data = _load("activities.yaml")
+    acts, coupons = data["activities"], data["coupons"]
+    assert len(acts) + len(coupons) == 10, "活动与优惠合计 10 条（手册 7.2 要求 2）"
+
+    store_names = set()
+    for fname in ("pois_b1.yaml", "pois_f1.yaml", "pois_f2.yaml"):
+        store_names |= {p["name"] for p in _load(fname)["pois"]}
+    for a in acts:
+        assert a["title"] and a["act_type"], "活动缺 title/act_type"
+        assert a["start_at"] < a["end_at"], f"{a['title']} 时间区间倒挂"
+        if a.get("poi"):
+            assert a["poi"] in store_names, f"{a['title']} 引用不存在的店铺 {a['poi']}"
+    for c in coupons:
+        assert c["title"] and c["coupon_type"] in {"discount", "full_reduction", "gift"}
+        if c["coupon_type"] == "full_reduction":
+            assert c.get("threshold", 0) > c.get("value", 0), f"{c['title']} 满减门槛应大于减免额"
+        if c.get("poi"):
+            assert c["poi"] in store_names, f"{c['title']} 引用不存在的店铺 {c['poi']}"
+
+    # 附录 B 问句 16 依赖满 100 减 20 的券
+    full100 = [c for c in coupons if c.get("threshold") == 100 and c.get("value") == 20]
+    assert full100, "缺满 100 减 20 券（附录 B 问句 16 的基线依赖）"
+
+
+def test_knowledge_files_structure():
+    """场地指南 17 篇 + FAQ 15 篇（其余 68 篇店铺介绍由 seed 从 pois 生成，合计 100）。"""
+    guides = _load("knowledge_venue.yaml")["docs"]
+    faqs = _load("knowledge_faq.yaml")["docs"]
+    assert len(guides) == 17, f"场地指南应 17 篇，实际 {len(guides)}"
+    assert len(faqs) == 15, f"FAQ 应 15 篇，实际 {len(faqs)}"
+    for d in guides + faqs:
+        assert d["doc_type"] in {"venue_guide", "faq"}
+        assert d["title"] and len(d["content"]) >= 20, f"{d['title']} 内容过短"
+    titles = [d["title"] for d in guides + faqs]
+    assert len(titles) == len(set(titles)), "指南/FAQ 标题不得重复"

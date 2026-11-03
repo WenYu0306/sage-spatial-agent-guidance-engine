@@ -37,3 +37,6 @@ def test_identity_and_space_scale(seed_mod):
     assert counts["users"] == 1, "演示运营账号 1 个"
     assert counts["roles"] == 5, "PRD 6.1 五个角色字典"
     assert counts["poi_categories"] >= 25, "分类字典应覆盖餐饮/零售/娱乐/设施"
+    assert counts["pois"] == 88, "68 店铺 + 20 设施"
+    assert counts["activities"] + counts["coupons"] == 10, "活动与优惠合计 10 条"
+    assert counts["knowledge_documents"] == 100, "100 篇知识文档（68 介绍+17 指南+15 FAQ）"

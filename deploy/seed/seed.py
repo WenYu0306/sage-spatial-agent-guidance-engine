@@ -172,13 +172,16 @@ def _seed_categories(cur, tenant_id: int, tenant_code: str, data: dict) -> None:
         )
 
 
-def _seed_pois(cur, tenant_id: int, venue_id: int, floor_ids: dict[str, int], data: dict) -> None:
+def _seed_pois(
+    cur, tenant_id: int, venue_id: int, floor_ids: dict[str, int], data: dict,
+) -> list[dict]:
     """店铺/设施 upsert（pois 表无唯一约束，按 tenant+venue+floor+name 查改插）。
 
     YAML 的 hours 是 "HH:MM-HH:MM" 字符串，展开为 PRD 要求的 7 天 JSONB：
     {"mon": [...], ..., "sun": [...], "holidays": []}。
     """
     default_floor = data.get("floor")
+    rows_ctx: list[dict] = []
     for p in data["pois"]:
         floor = p.get("floor", default_floor)
         fid = floor_ids[floor]
@@ -210,6 +213,130 @@ def _seed_pois(cur, tenant_id: int, venue_id: int, floor_ids: dict[str, int], da
                  Jsonb(p.get("tags", [])), float(p.get("hot", 0)),
                  float(p.get("weight", 1.0))),
             )
+        rows_ctx.append(
+            {"name": p["name"], "category": p["category"], "floor": floor,
+             "hours": h, "tags": list(p.get("tags", []))}
+        )
+    return rows_ctx
+
+
+def _seed_activities(
+    cur, tenant_id: int, venue_id: int, admin_uid: int | None, data: dict, poi_id_map: dict,
+) -> dict:
+    """活动 upsert（自然键 tenant+venue+title）。返回 title→id 供券关联。"""
+    act_ids: dict[str, int] = {}
+    if admin_uid is None:
+        msg = "SEED_DEMO_ADMIN_PASSWORD 未设置：无演示账号，跳过活动/券（created_by 必填）"
+        print(msg, file=sys.stderr)
+        return act_ids
+    for a in data["activities"]:
+        poi_id = poi_id_map.get(a["poi"]) if a.get("poi") else None
+        aid = _one(
+            cur,
+            "select id from activities where tenant_id=%s and venue_id=%s "
+            "and title=%s and deleted_at is null",
+            (tenant_id, venue_id, a["title"]),
+        )
+        if aid:
+            cur.execute(
+                "update activities set poi_id=%s, owner_type=%s, act_type=%s, description=%s, "
+                "start_at=%s, end_at=%s, status='active', rules=%s, created_by=%s where id=%s",
+                (poi_id, a.get("owner", "venue"), a["act_type"], a.get("description"),
+                 a["start_at"], a["end_at"], Jsonb(a.get("rules", {})), admin_uid, aid),
+            )
+        else:
+            cur.execute(
+                "insert into activities (tenant_id, venue_id, poi_id, owner_type, act_type, "
+                "title, description, start_at, end_at, status, rules, created_by) "
+                "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'active', %s, %s)",
+                (tenant_id, venue_id, poi_id, a.get("owner", "venue"), a["act_type"],
+                 a["title"], a.get("description"), a["start_at"], a["end_at"],
+                 Jsonb(a.get("rules", {})), admin_uid),
+            )
+        act_ids[a["title"]] = aid if aid else _one(
+            cur,
+            "select id from activities where tenant_id=%s and venue_id=%s and title=%s",
+            (tenant_id, venue_id, a["title"]),
+        )
+    return act_ids
+
+
+def _seed_coupons(
+    cur, tenant_id: int, venue_id: int, data: dict, poi_id_map: dict, activity_ids: dict,
+) -> None:
+    """券 upsert（自然键 tenant+venue+title）。YAML 的 description 字段不入库（表无该列）。"""
+    for c in data["coupons"]:
+        poi_id = poi_id_map.get(c["poi"]) if c.get("poi") else None
+        act_id = activity_ids.get(c["activity"]) if c.get("activity") else None
+        cid = _one(
+            cur,
+            "select id from coupons where tenant_id=%s and venue_id=%s "
+            "and title=%s and deleted_at is null",
+            (tenant_id, venue_id, c["title"]),
+        )
+        if cid:
+            cur.execute(
+                "update coupons set poi_id=%s, activity_id=%s, coupon_type=%s, threshold=%s, "
+                "value=%s, total_qty=%s, per_user_limit=%s, start_at=%s, end_at=%s, "
+                "status='active' where id=%s",
+                (poi_id, act_id, c["coupon_type"], c.get("threshold", 0), c.get("value", 0),
+                 c["total"], c.get("per_user_limit", 1), c["start_at"], c["end_at"], cid),
+            )
+        else:
+            cur.execute(
+                "insert into coupons (tenant_id, venue_id, poi_id, activity_id, title, "
+                "coupon_type, threshold, value, total_qty, per_user_limit, start_at, end_at, "
+                "status) values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'active')",
+                (tenant_id, venue_id, poi_id, act_id, c["title"], c["coupon_type"],
+                 c.get("threshold", 0), c.get("value", 0), c["total"], c.get("per_user_limit", 1),
+                 c["start_at"], c["end_at"]),
+            )
+
+
+def _upsert_doc(
+    cur, tenant_id: int, venue_id: int, poi_id, doc_type: str, title: str, content: str,
+) -> None:
+    """知识文档 upsert（自然键 tenant+venue+doc_type+title）。"""
+    did = _one(
+        cur,
+        "select id from knowledge_documents where tenant_id=%s and venue_id=%s "
+        "and doc_type=%s and title=%s",
+        (tenant_id, venue_id, doc_type, title),
+    )
+    if did:
+        cur.execute(
+            "update knowledge_documents set content=%s, status='active' where id=%s",
+            (content, did),
+        )
+    else:
+        cur.execute(
+            "insert into knowledge_documents (tenant_id, venue_id, poi_id, doc_type, title, "
+            "content) values (%s, %s, %s, %s, %s, %s)",
+            (tenant_id, venue_id, poi_id, doc_type, title, content),
+        )
+
+
+def _seed_knowledge_docs(cur, tenant_id: int, venue_id: int, data: dict, poi_id_map: dict) -> None:
+    """场地指南与 FAQ 文档入库。"""
+    for d in data["docs"]:
+        _upsert_doc(cur, tenant_id, venue_id, None, d["doc_type"], d["title"], d["content"])
+
+
+def _seed_poi_intros(
+    cur, tenant_id: int, venue_id: int, venue_name: str,
+    pois_ctx: list[dict], cat_names: dict, poi_id_map: dict,
+) -> None:
+    """为每个店铺生成 1 篇 poi_intro 文档（内容从 pois 数据派生，合计 68 篇）。"""
+    for row in pois_ctx:
+        cat_name = cat_names.get(row["category"], row["category"])
+        tags = "、".join(row["tags"]) if row["tags"] else "多样服务"
+        content = (
+            f"{row['name']}位于{venue_name}{row['floor']}层，属于{cat_name}业态，"
+            f"营业时间 {row['hours']}。店铺特色：{tags}。"
+            "以上信息由商场运营方维护，如有变动以门店现场公示为准。"
+        )
+        _upsert_doc(cur, tenant_id, venue_id, poi_id_map.get(row["name"]),
+                    "poi_intro", row["name"], content)
 
 
 def run_seed(dsn: str | None = None) -> dict[str, int]:
@@ -228,10 +355,41 @@ def run_seed(dsn: str | None = None) -> dict[str, int]:
                 pois_files = (
                     "pois_b1.yaml", "pois_f1.yaml", "pois_f2.yaml", "facilities.yaml",
                 )
+                pois_ctx: list[dict] = []
                 for pois_file in pois_files:
                     d = _load_yaml(pois_file)
                     if d:
-                        _seed_pois(cur, tenant_id, venue_id, floor_ids, d)
+                        pois_ctx.extend(_seed_pois(cur, tenant_id, venue_id, floor_ids, d))
+                admin_uid = _one(
+                    cur,
+                    "select id from users where tenant_id=%s and username=%s",
+                    (tenant_id, tv["demo_admin"]["username"]),
+                )
+                with cur.connection.cursor() as cur3:
+                    cur3.execute(
+                        "select name, id from pois where tenant_id=%s and venue_id=%s",
+                        (tenant_id, venue_id),
+                    )
+                    poi_id_map = dict(cur3.fetchall())
+                cat_names = {}
+                facility_cats: set[str] = set()
+                if cats:
+                    cat_names = {c["code"]: c["name"] for c in cats["categories"]}
+                    facility_cats = {c["code"] for c in cats["categories"] if c.get("is_facility")}
+                acts = _load_yaml("activities.yaml")
+                if acts:
+                    act_ids = _seed_activities(
+                        cur, tenant_id, venue_id, admin_uid, acts, poi_id_map,
+                    )
+                    _seed_coupons(cur, tenant_id, venue_id, acts, poi_id_map, act_ids)
+                for kfile in ("knowledge_venue.yaml", "knowledge_faq.yaml"):
+                    kd = _load_yaml(kfile)
+                    if kd:
+                        _seed_knowledge_docs(cur, tenant_id, venue_id, kd, poi_id_map)
+                store_ctx = [r for r in pois_ctx if r["category"] not in facility_cats]
+                if store_ctx:
+                    _seed_poi_intros(cur, tenant_id, venue_id, tv["venue"]["name"],
+                                     store_ctx, cat_names, poi_id_map)
 # ③④⑤ 在此追加：pois/facilities → activities/coupons → knowledge/eval 基线
     return count_rows(dsn or _dsn())
 

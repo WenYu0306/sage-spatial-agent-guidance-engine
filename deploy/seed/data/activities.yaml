@@ -1,0 +1,88 @@
+# 活动与优惠券（合计 10 条：商场级活动 2 + 店铺活动 4 + 券 4，全部虚构促销信息）。
+# 时间窗为固定 demo 窗口；poi/ activity 用名称引用，seed 负责解析成 id。
+activities:
+  - title: 栖云周年庆·满赠礼遇
+    act_type: mall_activity
+    owner: venue
+    description: 全场消费满 300 元，凭当日小票到 F1 服务台兑换周年庆礼盒（数量有限）。
+    start_at: "2026-11-01T10:00:00+08:00"
+    end_at: "2026-12-31T22:00:00+08:00"
+    rules: {min_spend: 300}
+  - title: 会员双倍积分日
+    act_type: mall_activity
+    owner: venue
+    description: 每月 8 日会员消费享双倍积分，积分可兑换停车券与礼品。
+    start_at: "2026-11-01T10:00:00+08:00"
+    end_at: "2026-12-31T22:00:00+08:00"
+    rules: {points_multiplier: 2}
+  - title: 云雀灶火锅·工作日午市 88 折
+    act_type: shop_promo
+    owner: shop
+    poi: 云雀灶火锅
+    description: 周一至周五午市时段全场 88 折（酒水除外）。
+    start_at: "2026-11-01T10:30:00+08:00"
+    end_at: "2026-12-31T21:30:00+08:00"
+    rules: {discount: 88, period: weekday_lunch}
+  - title: 白桦西餐·情侣双人套餐
+    act_type: package
+    owner: shop
+    poi: 白桦西餐
+    description: 双人套餐含前菜两份、主菜两份、甜品一份，需提前一天预订。
+    start_at: "2026-11-01T11:00:00+08:00"
+    end_at: "2026-12-31T21:30:00+08:00"
+    rules: {price: 268}
+  - title: 巨幕星云影院·周二半价日
+    act_type: shop_promo
+    owner: shop
+    poi: 巨幕星云影院
+    description: 每周二全场影片半价（节假日与首映场除外）。
+    start_at: "2026-11-01T10:30:00+08:00"
+    end_at: "2026-12-31T22:30:00+08:00"
+    rules: {day: tuesday, discount: 50}
+  - title: 食光便利店·新店开业
+    act_type: new_store
+    owner: shop
+    poi: 食光便利店
+    description: B1 食光便利店新开业，开业期到店送现磨咖啡一杯。
+    start_at: "2026-11-01T08:00:00+08:00"
+    end_at: "2026-11-30T22:00:00+08:00"
+    rules: {gift: coffee}
+
+coupons:
+  - title: 满 100 减 20 美食券
+    coupon_type: full_reduction
+    threshold: 100
+    value: 20
+    total: 500
+    per_user_limit: 1
+    activity: 栖云周年庆·满赠礼遇
+    description: 全馆餐饮通用，单笔满 100 元立减 20 元，每单限用一张。
+    start_at: "2026-11-01T10:00:00+08:00"
+    end_at: "2026-12-31T22:00:00+08:00"
+  - title: 野莓茶集 8 折券
+    coupon_type: discount
+    value: 80
+    total: 300
+    per_user_limit: 1
+    poi: 野莓茶集
+    description: 饮品 8 折（特价款除外）。
+    start_at: "2026-11-01T10:00:00+08:00"
+    end_at: "2026-12-31T21:30:00+08:00"
+  - title: 云上乐园亲子票买一送一券
+    coupon_type: gift
+    total: 100
+    per_user_limit: 1
+    poi: 云上乐园
+    description: 亲子票买一送一，需家长与儿童同场使用。
+    start_at: "2026-11-01T10:00:00+08:00"
+    end_at: "2026-12-31T21:00:00+08:00"
+  - title: 灶门炭火锅 50 元代金券
+    coupon_type: full_reduction
+    threshold: 200
+    value: 50
+    total: 200
+    per_user_limit: 1
+    poi: 灶门炭火锅
+    description: 单笔满 200 元可用，不与其他折扣同享。
+    start_at: "2026-11-01T10:30:00+08:00"
+    end_at: "2026-12-31T21:30:00+08:00"
