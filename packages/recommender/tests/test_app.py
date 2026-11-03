@@ -127,5 +127,11 @@ def test_closed_candidate_excluded(client, ctx_ids, dsn):
             conn.commit()
 
 
+def test_weights_readonly_endpoint(client):
+    r = client.get("/recommend/weights").json()
+    assert abs(sum(r["factors"].values()) - 1.0) < 1e-9
+    assert r["editable"] is False and r["factors"]["distance"] == 0.22
+
+
 def test_health(client):
     assert client.get("/health").json() == {"ok": True}

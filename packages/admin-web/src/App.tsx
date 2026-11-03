@@ -6,10 +6,14 @@ import { navigate, useHashRoute } from "./router.tsx";
 import { Badge, Button, ToastHost } from "./components/ui.tsx";
 import LoginPage from "./pages/Login.tsx";
 import ActivitiesPage from "./pages/Activities.tsx";
+import DashboardPage from "./pages/Dashboard.tsx";
+import DevicesPage from "./pages/Devices.tsx";
 import CouponsPage from "./pages/Coupons.tsx";
 import KnowledgePage from "./pages/Knowledge.tsx";
 import PoisPage from "./pages/Pois.tsx";
+import UsersPage from "./pages/Users.tsx";
 import VenuesPage from "./pages/Venues.tsx";
+import WeightsPage from "./pages/Weights.tsx";
 
 const NAV = [
   { path: "/venues", label: "场地列表", roles: ["platform_admin", "venue_admin"] },
@@ -97,18 +101,10 @@ function Page({ route }: { route: string }) {
   if (route.startsWith("/activities")) return <ActivitiesPage />;
   if (route.startsWith("/coupons")) return <CouponsPage />;
   if (route.startsWith("/knowledge")) return <KnowledgePage />;
-  if (route.startsWith("/weights")) return <ComingSoon title="推荐权重" note="B4 交付" />;
-  if (route.startsWith("/devices")) return <ComingSoon title="设备列表" note="B4 交付" />;
-  if (route.startsWith("/users")) return <ComingSoon title="账号与角色" note="B4 交付" />;
-  if (route.startsWith("/dashboard")) return <ComingSoon title="数据看板" note="B4 交付（M9 未接入空态）" />;
+  if (route.startsWith("/weights")) return <WeightsPage />;
+  if (route.startsWith("/devices")) return <DevicesPage />;
+  if (route.startsWith("/users")) return <UsersPage />;
+  if (route.startsWith("/dashboard")) return <DashboardPage />;
   return <VenuesPage />;
 }
 
-function ComingSoon({ title, note }: { title: string; note: string }) {
-  return (
-    <div className="rounded-lg border border-dashed border-slate-300 bg-white p-10 text-center">
-      <p className="text-sm font-medium text-slate-600">{title}</p>
-      <p className="mt-1 text-xs text-slate-400">{note}</p>
-    </div>
-  );
-}

@@ -9,6 +9,7 @@ export default defineConfig({
     port: 5191,
     proxy: {
       "/api": { target: process.env.CONTENT_SERVICE_URL ?? "http://localhost:8945", changeOrigin: true },
+      "/recommend": { target: process.env.RECOMMENDER_URL ?? "http://localhost:8944", changeOrigin: true },
     },
   },
 });

@@ -106,6 +106,19 @@ class DocPatch(BaseModel):
     doc_type: str | None = None
 
 
+class UserCreate(BaseModel):
+    username: str = Field(min_length=2, max_length=64)
+    display_name: str = Field(min_length=1, max_length=64)
+    role: str
+    password: str = Field(min_length=8)
+    status: str = "active"
+
+
+class UserPatch(BaseModel):
+    status: str | None = None
+    display_name: str | None = None
+
+
 def create_app(dsn: str) -> FastAPI:
     runtime = AuthRuntime(dsn=dsn)
     app = FastAPI(title="content-service", version="0.1.0")
@@ -217,8 +230,7 @@ def create_app(dsn: str) -> FastAPI:
             params.append(merchant_id)
         base = ("from pois p where " + " and ".join(where))
         if open_now:
-            bh_rows = rows("select id, business_hours from pois p " + base,
-                           tuple(params))
+            bh_rows = rows("select id, business_hours " + base, tuple(params))
             now = dt.datetime.now()
             keep = {r[0] for r in bh_rows
                     if _open_now(r[1] if isinstance(r[1], dict) else {}, now)}
@@ -680,6 +692,103 @@ def create_app(dsn: str) -> FastAPI:
         runtime.oplog(ctx.tenant_id, ctx.user_id, "delete", "knowledge_document",
                       doc_id, ctx.trace_id, ctx.ip)
         return {"id": doc_id, "deleted": True}
+
+    # ---------- B4：设备列表（PRD 7.4）与账号管理（PRD 2.2） ----------
+
+    @app.get("/api/v1/devices")
+    def device_list(ctx: AuthContext = Depends(runtime.dependency(
+            "platform_admin", "venue_admin"))):
+        where = "where d.tenant_id=%s"
+        params: list = [ctx.tenant_id]
+        if ctx.venue_id is not None:
+            where += " and d.venue_id=%s"
+            params.append(ctx.venue_id)
+        data = rows(
+            "select d.id, d.code, d.name, d.device_type, d.status, "
+            "d.last_seen_at, d.app_version, f.name " + f"from devices d "
+            f"left join floors f on f.id=d.floor_id {where} order by d.id",
+            tuple(params))
+        return {"items": [{"id": r[0], "code": r[1], "name": r[2],
+                           "device_type": r[3], "status": r[4],
+                           "last_seen_at": r[5].isoformat() if r[5] else None,
+                           "app_version": r[6], "floor": r[7]} for r in data]}
+
+    @app.get("/api/v1/users")
+    def user_list(ctx: AuthContext = Depends(runtime.dependency(
+            "platform_admin", "venue_admin"))):
+        data = rows(
+            "select u.id, u.username, u.display_name, u.status, u.last_login_at, "
+            "r.code, ur.venue_id, ur.merchant_id "
+            "from users u left join user_roles ur on ur.user_id=u.id "
+            "left join roles r on r.id=ur.role_id "
+            "where u.tenant_id=%s order by u.id", (ctx.tenant_id,))
+        merged: dict[int, dict] = {}
+        for r in data:
+            row = merged.setdefault(r[0], {
+                "id": r[0], "username": r[1], "display_name": r[2],
+                "status": r[3], "last_login_at": r[4].isoformat() if r[4] else None,
+                "roles": []})
+            if r[5]:
+                row["roles"].append(r[5])
+        return {"items": list(merged.values())}
+
+    @app.post("/api/v1/users")
+    def user_create(body: UserCreate,
+                    ctx: AuthContext = Depends(runtime.dependency(
+                        "platform_admin", "venue_admin"))):
+        from platform_core.auth import hash_password
+        from platform_core.auth_router import AuthError
+
+        if not one("select 1 from roles where code=%s", (body.role,)):
+            raise AuthError(403, 1003, "角色不存在")
+        if one("select 1 from users where tenant_id=%s and username=%s",
+               (ctx.tenant_id, body.username)):
+            raise AuthError(403, 1003, "用户名已存在")
+        scope_venue = ctx.venue_id if body.role in ("venue_admin", "venue_editor") else None
+        with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+            cur.execute(
+                "insert into users (tenant_id, username, password_hash, display_name, "
+                "status) values (%s, %s, %s, %s, %s) returning id",
+                (ctx.tenant_id, body.username, hash_password(body.password),
+                 body.display_name, body.status))
+            uid = cur.fetchone()[0]
+            cur.execute(
+                "insert into user_roles (user_id, role_id, venue_id) "
+                "values (%s, (select id from roles where code=%s), %s)",
+                (uid, body.role, scope_venue))
+            conn.commit()
+        runtime.oplog(ctx.tenant_id, ctx.user_id, "create", "user", uid,
+                      ctx.trace_id, ctx.ip, diff={"role": body.role})
+        return {"id": uid, "status": body.status}
+
+    @app.patch("/api/v1/users/{user_id}")
+    def user_patch(user_id: int, body: UserPatch,
+                   ctx: AuthContext = Depends(runtime.dependency(
+                       "platform_admin", "venue_admin"))):
+        row = one("select id from users where id=%s and tenant_id=%s",
+                  (user_id, ctx.tenant_id))
+        if not row:
+            from platform_core.auth_router import AuthError
+
+            raise AuthError(403, 1003, "账号不存在或不属于当前租户")
+        sets, params = [], []
+        if body.status is not None:
+            sets.append("status=%s")
+            params.append(body.status)
+        if body.display_name is not None:
+            sets.append("display_name=%s")
+            params.append(body.display_name)
+        if not sets:
+            return {"id": user_id}
+        params.append(user_id)
+        with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+            cur.execute(f"update users set {', '.join(sets)}, updated_at=now() "
+                        "where id=%s returning status", tuple(params))
+            status = cur.fetchone()[0]
+            conn.commit()
+        runtime.oplog(ctx.tenant_id, ctx.user_id, "update", "user", user_id,
+                      ctx.trace_id, ctx.ip, diff={"status": status})
+        return {"id": user_id, "status": status}
 
     return app
 

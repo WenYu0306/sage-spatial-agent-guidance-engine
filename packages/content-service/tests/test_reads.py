@@ -56,6 +56,34 @@ def test_pois_list_combined_filters_and_pagination(client, tokens, accounts):
     assert all(i["floor_id"] == min(floor_ids) for i in r.json()["items"])
 
 
+def test_pois_open_now_filter(client, tokens, accounts, dsn):
+    """回归：open_now 分支 SQL 与营业时段判定（临时全天时段 POI 必须命中）。"""
+    import json as _json
+
+    import psycopg
+
+    h = _h(tokens["rbac_admin"])
+    all_day = _json.dumps({d: ["00:00-23:59"] for d in
+                           ("mon", "tue", "wed", "thu", "fri", "sat", "sun")})
+    with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            "insert into pois (tenant_id, venue_id, floor_id, category_code, name, "
+            "position_x, position_y, business_hours, status) "
+            "values (%s, %s, (select id from floors where venue_id=%s and level=1), "
+            "'restaurant', '全天测试铺', 111, 222, %s, 'published') returning id",
+            (accounts["tid"], accounts["vid"], accounts["vid"], all_day))
+        pid = cur.fetchone()[0]
+        conn.commit()
+    try:
+        body = client.get("/api/v1/pois", headers=h,
+                          params={"open_now": "true", "page_size": 100}).json()
+        assert pid in [i["id"] for i in body["items"]], "全天时段 POI 应命中 open_now"
+    finally:
+        with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+            cur.execute("delete from pois where id=%s", (pid,))
+            conn.commit()
+
+
 def test_poi_detail_includes_current_activities(client, tokens, accounts):
     with_pois = client.get("/api/v1/pois", headers=_h(tokens["rbac_admin"]),
                            params={"keyword": "火锅", "page_size": 1}).json()

@@ -38,6 +38,13 @@ def create_app(dsn: str) -> FastAPI:
     def health() -> dict:
         return {"ok": True}
 
+    @app.get("/recommend/weights")
+    def weights():
+        """只读暴露当前权重配置（F-16：V1 冻结不做后台可调；M10 权重页展示用）。"""
+        lw = LoadableWeights.default()
+        return {"factors": lw.as_dict(), "scales": lw.scales,
+                "editable": False, "note": "V1 权重固定配置文件（F-16），调权走 git 修订"}
+
     @app.post("/recommend/rank")
     def rank(req: RankRequest):
         if not req.candidates:
