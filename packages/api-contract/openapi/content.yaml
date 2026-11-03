@@ -1,0 +1,65 @@
+openapi: 3.1.0
+info:
+  title: M8 内容与营销（content）
+  version: 0.1.0
+  description: PRD 7.3 内容端点。认证走 /api/v1/auth/*（common.yaml bearerAuth）；
+    越权 403/1003、状态非法 409/4001、券售罄 4002。所有列表端点分页 page/page_size。
+paths:
+  /api/v1/pois:
+    get:
+      summary: POI 列表（组合过滤+分页）
+      parameters:
+        - { name: venue_id, in: query, schema: { type: integer } }
+        - { name: floor_id, in: query, schema: { type: integer } }
+        - { name: category_code, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string, enum: [draft, pending, published, offline] } }
+        - { name: keyword, in: query, schema: { type: string } }
+        - { name: open_now, in: query, schema: { type: boolean } }
+        - { name: merchant_id, in: query, schema: { type: integer } }
+      responses:
+        "200": { description: { items, total, page, page_size } }
+    post:
+      summary: 创建 POI（落 draft；merchant 强制锚点门店）
+      responses:
+        "200": { description: "{ id, status }" }
+        "403": { description: 1003 越权 }
+  /api/v1/pois/{poi_id}/publish:
+    post:
+      summary: 发布状态机流转（draft→pending→published/offline）
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target]
+              properties:
+                target: { type: string, enum: [pending, published, offline, draft] }
+      responses:
+        "200": { description: "{ id, status }" }
+        "409": { description: 4001 状态不允许 }
+        "403": { description: 1003 角色不符（审核仅 venue_admin） }
+  /api/v1/activities/{act_id}/publish:
+    post:
+      summary: 活动状态机（draft→pending→active→ended→archived）
+      responses:
+        "200": { description: "{ id, status }" }
+        "409": { description: 4001 状态不允许 }
+  /api/v1/coupons/{coupon_id}/claim:
+    post:
+      summary: 领券（guest，幂等键 coupon_id:anonymous_id，库存原子扣减）
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [anonymous_id]
+              properties:
+                anonymous_id: { type: string, maxLength: 64 }
+      responses:
+        "200": { description: "{ id?, coupon_id, duplicate }；售罄 200+error_code=4002" }
+  /api/v1/knowledge-documents:
+    post:
+      summary: 创建知识文档（venue_admin/venue_editor；重嵌入走 M6 增量端点，后续任务）
+      responses:
+        "200": { description: "{ id, version }" }
+        "403": { description: 1003 merchant 无权 }

@@ -69,6 +69,43 @@ class PoiPatch(BaseModel):
     category_code: str | None = None
 
 
+class ActCreate(BaseModel):
+    venue_id: int
+    poi_id: int | None = None
+    act_type: str
+    title: str = Field(min_length=1, max_length=128)
+    description: str | None = None
+    start_at: dt.datetime
+    end_at: dt.datetime
+    rules: dict = Field(default_factory=dict)
+
+
+class ActPatch(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    start_at: dt.datetime | None = None
+    end_at: dt.datetime | None = None
+    rules: dict | None = None
+
+
+class ClaimBody(BaseModel):
+    anonymous_id: str = Field(min_length=1, max_length=64)
+
+
+class DocCreate(BaseModel):
+    venue_id: int
+    poi_id: int | None = None
+    doc_type: str
+    title: str = Field(min_length=1, max_length=255)
+    content: str = Field(min_length=1)
+
+
+class DocPatch(BaseModel):
+    title: str | None = None
+    content: str | None = None
+    doc_type: str | None = None
+
+
 def create_app(dsn: str) -> FastAPI:
     runtime = AuthRuntime(dsn=dsn)
     app = FastAPI(title="content-service", version="0.1.0")
@@ -359,6 +396,275 @@ def create_app(dsn: str) -> FastAPI:
                 "coupons": [{"id": c[0], "title": c[1], "coupon_type": c[2],
                              "threshold": float(c[3]), "value": float(c[4]),
                              "remaining": c[5] - c[6]} for c in cps]}
+
+    # ---------- B3：活动状态机 / 领券幂等 / 知识文档 ----------
+
+    ACT_TRANSITIONS = {
+        "draft": {"pending"},
+        "pending": {"active", "draft"},
+        "active": {"ended"},
+        "ended": {"archived"},
+    }
+    ACT_TARGET_ROLES = {
+        "pending": ("platform_admin", "venue_admin", "venue_editor", "merchant"),
+        "active": ("platform_admin", "venue_admin"),
+        "ended": ("platform_admin", "venue_admin"),
+        "archived": ("platform_admin", "venue_admin"),
+    }
+
+    def _load_act_for_write(ctx: AuthContext, act_id: int) -> tuple:
+        row = one(
+            "select id, venue_id, poi_id, status, tenant_id from activities "
+            "where id=%s and deleted_at is null", (act_id,))
+        if not row or row[4] != ctx.tenant_id:
+            from platform_core.auth_router import AuthError
+
+            raise AuthError(403, 1003, "活动不存在或不属于当前租户")
+        ctx.ensure_venue(row[1])
+        return row
+
+    @app.get("/api/v1/activities")
+    def act_list(ctx: AuthContext = Depends(runtime.dependency()),
+                 act_type: str | None = None, status: str | None = None,
+                 poi_id: int | None = None, title: str | None = None,
+                 page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100)):
+        where = ["tenant_id=%s", "deleted_at is null"]
+        params: list = [ctx.tenant_id]
+        if ctx.venue_id is not None:
+            where.append("venue_id=%s")
+            params.append(ctx.venue_id)
+        if act_type:
+            where.append("act_type=%s")
+            params.append(act_type)
+        if status:
+            where.append("status=%s")
+            params.append(status)
+        if poi_id is not None:
+            where.append("poi_id=%s")
+            params.append(poi_id)
+        if title:
+            where.append("title ilike %s")
+            params.append(f"%{title}%")
+        base = "from activities where " + " and ".join(where)
+        total = one("select count(*) " + base, tuple(params))[0]
+        data = rows("select id, venue_id, poi_id, act_type, title, status, "
+                    "start_at, end_at " + base + " order by id desc limit %s offset %s",
+                    tuple(params) + (page_size, (page - 1) * page_size))
+        return {"items": [{"id": r[0], "venue_id": r[1], "poi_id": r[2],
+                           "act_type": r[3], "title": r[4], "status": r[5],
+                           "start_at": r[6].isoformat(), "end_at": r[7].isoformat()}
+                          for r in data], "total": total}
+
+    @app.post("/api/v1/activities")
+    def act_create(body: ActCreate,
+                   ctx: AuthContext = Depends(runtime.dependency(
+                       "platform_admin", "venue_admin", "venue_editor", "merchant"))):
+        _venue_of_tenant(ctx, body.venue_id)
+        if ctx.merchant_id is not None:
+            # merchant 只能建自己门店的活动；无门店归属的商场级活动不可建
+            from platform_core.auth_router import AuthError
+
+            if body.poi_id != ctx.merchant_id:
+                raise AuthError(403, 1003, "商户只能创建自己门店的活动")
+        elif body.poi_id is not None:
+            if not one("select 1 from pois where id=%s and tenant_id=%s",
+                       (body.poi_id, ctx.tenant_id)):
+                from platform_core.auth_router import AuthError
+
+                raise AuthError(403, 1003, "活动门店不属于当前租户")
+        aid = one(
+            "insert into activities (tenant_id, venue_id, poi_id, act_type, title, "
+            "description, start_at, end_at, rules, status, created_by) "
+            "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'draft', %s) returning id",
+            (ctx.tenant_id, body.venue_id, body.poi_id, body.act_type, body.title,
+             body.description, body.start_at, body.end_at, Jsonb(body.rules),
+             ctx.user_id))[0]
+        runtime.oplog(ctx.tenant_id, ctx.user_id, "create", "activity", aid,
+                      ctx.trace_id, ctx.ip)
+        return {"id": aid, "status": "draft"}
+
+    @app.patch("/api/v1/activities/{act_id}")
+    def act_patch(act_id: int, body: ActPatch,
+                  ctx: AuthContext = Depends(runtime.dependency(
+                      "platform_admin", "venue_admin", "venue_editor", "merchant"))):
+        _load_act_for_write(ctx, act_id)
+        sets, params = [], []
+        for col in ("title", "description", "start_at", "end_at"):
+            val = getattr(body, col)
+            if val is not None:
+                sets.append(f"{col}=%s")
+                params.append(val)
+        if body.rules is not None:
+            sets.append("rules=%s")
+            params.append(Jsonb(body.rules))
+        if not sets:
+            return {"id": act_id}
+        params.append(act_id)
+        with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+            cur.execute(f"update activities set {', '.join(sets)}, updated_at=now() "
+                        "where id=%s", tuple(params))
+            conn.commit()
+        runtime.oplog(ctx.tenant_id, ctx.user_id, "update", "activity", act_id,
+                      ctx.trace_id, ctx.ip)
+        return {"id": act_id}
+
+    @app.post("/api/v1/activities/{act_id}/publish")
+    def act_publish(act_id: int, body: PublishBody,
+                    ctx: AuthContext = Depends(runtime.dependency(
+                        "platform_admin", "venue_admin", "venue_editor", "merchant"))):
+        row = _load_act_for_write(ctx, act_id)
+        current, target = row[3], body.target
+        if target not in ACT_TRANSITIONS.get(current, set()):
+            from fastapi.responses import JSONResponse
+
+            return JSONResponse(status_code=409, content={
+                "error_code": 4001,
+                "message": f"状态不允许：{current} 不能转到 {target}"})
+        if not set(ctx.roles) & set(ACT_TARGET_ROLES[target]):
+
+            ctx._deny("你没有该操作的权限", "activity", act_id)
+        with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+            cur.execute("update activities set status=%s, updated_at=now() "
+                        "where id=%s", (target, act_id))
+            conn.commit()
+        runtime.oplog(ctx.tenant_id, ctx.user_id, "publish", "activity", act_id,
+                      ctx.trace_id, ctx.ip, diff={"to": target})
+        return {"id": act_id, "status": target}
+
+    @app.get("/api/v1/coupons")
+    def coupon_list(ctx: AuthContext = Depends(runtime.dependency())):
+        where = ["c.tenant_id=%s", "c.deleted_at is null"]
+        params: list = [ctx.tenant_id]
+        if ctx.venue_id is not None:
+            where.append("c.venue_id=%s")
+            params.append(ctx.venue_id)
+        data = rows(
+            "select c.id, c.title, c.coupon_type, c.threshold, c.value, "
+            "c.total_qty - c.claimed_qty, c.poi_id, c.start_at, c.end_at "
+            "from coupons c where " + " and ".join(where) + " order by c.id",
+            tuple(params))
+        return {"items": [{"id": r[0], "title": r[1], "coupon_type": r[2],
+                           "threshold": float(r[3]), "value": float(r[4]),
+                           "remaining": r[5], "poi_id": r[6],
+                           "start_at": r[7].isoformat(), "end_at": r[8].isoformat()}
+                          for r in data]}
+
+    @app.post("/api/v1/coupons/{coupon_id}/claim")
+    def coupon_claim(coupon_id: int, body: ClaimBody):
+        """guest 领券（无登录，anonymous_id 标识）。幂等键 coupon_id:anonymous_id；
+        库存原子扣减（禁止先查后写，PRD 12）；重放返回既有券 duplicate=true。"""
+        with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+            cur.execute(
+                "update coupons set claimed_qty = claimed_qty + 1 "
+                "where id=%s and status='active' and deleted_at is null "
+                "and claimed_qty < total_qty and start_at <= now() "
+                "and end_at > now() returning id", (coupon_id,))
+            if cur.fetchone() is None:
+                conn.rollback()
+                cur.execute("select 1 from coupon_claims where idempotency_key=%s",
+                            (f"{coupon_id}:{body.anonymous_id}",))
+                if cur.fetchone():
+                    return {"coupon_id": coupon_id, "duplicate": True}
+                return {"error_code": 4002, "message": "这张券已经领完了"}
+            try:
+                cur.execute(
+                    "insert into coupon_claims (tenant_id, coupon_id, anonymous_id, "
+                    "idempotency_key) values ((select tenant_id from coupons "
+                    "where id=%s), %s, %s, %s) returning id",
+                    (coupon_id, coupon_id, body.anonymous_id,
+                     f"{coupon_id}:{body.anonymous_id}"))
+                claim_id = cur.fetchone()[0]
+                conn.commit()
+            except psycopg.errors.UniqueViolation:
+                conn.rollback()  # 回滚已撤销本次 +1，无需再补偿（防止双重回冲）
+                return {"coupon_id": coupon_id, "duplicate": True}
+        return {"id": claim_id, "coupon_id": coupon_id, "duplicate": False}
+
+    @app.get("/api/v1/knowledge-documents")
+    def doc_list(ctx: AuthContext = Depends(runtime.dependency(
+                     "platform_admin", "venue_admin", "venue_editor")),
+                 title: str | None = None, doc_type: str | None = None,
+                 page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100)):
+        where = ["tenant_id=%s"]
+        params: list = [ctx.tenant_id]
+        if ctx.venue_id is not None:
+            where.append("venue_id=%s")
+            params.append(ctx.venue_id)
+        if title:
+            where.append("title ilike %s")
+            params.append(f"%{title}%")
+        if doc_type:
+            where.append("doc_type=%s")
+            params.append(doc_type)
+        base = "from knowledge_documents where " + " and ".join(where)
+        total = one("select count(*) " + base, tuple(params))[0]
+        data = rows("select id, venue_id, poi_id, doc_type, title, status, "
+                    "version " + base + " order by id limit %s offset %s",
+                    tuple(params) + (page_size, (page - 1) * page_size))
+        return {"items": [{"id": r[0], "venue_id": r[1], "poi_id": r[2],
+                           "doc_type": r[3], "title": r[4], "status": r[5],
+                           "version": r[6]} for r in data], "total": total}
+
+    @app.post("/api/v1/knowledge-documents")
+    def doc_create(body: DocCreate,
+                   ctx: AuthContext = Depends(runtime.dependency(
+                       "platform_admin", "venue_admin", "venue_editor"))):
+        _venue_of_tenant(ctx, body.venue_id)
+        did = one(
+            "insert into knowledge_documents (tenant_id, venue_id, poi_id, "
+            "doc_type, title, content) values (%s, %s, %s, %s, %s, %s) "
+            "returning id",
+            (ctx.tenant_id, body.venue_id, body.poi_id, body.doc_type,
+             body.title, body.content))[0]
+        runtime.oplog(ctx.tenant_id, ctx.user_id, "create", "knowledge_document",
+                      did, ctx.trace_id, ctx.ip)
+        return {"id": did, "version": 1}
+
+    @app.patch("/api/v1/knowledge-documents/{doc_id}")
+    def doc_patch(doc_id: int, body: DocPatch,
+                  ctx: AuthContext = Depends(runtime.dependency(
+                      "platform_admin", "venue_admin", "venue_editor"))):
+        row = one("select id, tenant_id from knowledge_documents where id=%s",
+                  (doc_id,))
+        if not row or row[1] != ctx.tenant_id:
+            from platform_core.auth_router import AuthError
+
+            raise AuthError(403, 1003, "文档不存在或不属于当前租户")
+        sets, params = [], []
+        for col in ("title", "content", "doc_type"):
+            val = getattr(body, col)
+            if val is not None:
+                sets.append(f"{col}=%s")
+                params.append(val)
+        if not sets:
+            return {"id": doc_id}
+        params.append(doc_id)
+        with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+            cur.execute(f"update knowledge_documents set {', '.join(sets)}, "
+                        "version=version+1, updated_at=now() where id=%s "
+                        "returning version", tuple(params))
+            version = cur.fetchone()[0]
+            conn.commit()
+        runtime.oplog(ctx.tenant_id, ctx.user_id, "update", "knowledge_document",
+                      doc_id, ctx.trace_id, ctx.ip)
+        return {"id": doc_id, "version": version}
+
+    @app.delete("/api/v1/knowledge-documents/{doc_id}")
+    def doc_delete(doc_id: int,
+                   ctx: AuthContext = Depends(runtime.dependency(
+                       "platform_admin", "venue_admin", "venue_editor"))):
+        row = one("select id, tenant_id from knowledge_documents where id=%s",
+                  (doc_id,))
+        if not row or row[1] != ctx.tenant_id:
+            from platform_core.auth_router import AuthError
+
+            raise AuthError(403, 1003, "文档不存在或不属于当前租户")
+        with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+            cur.execute("delete from knowledge_documents where id=%s", (doc_id,))
+            conn.commit()
+        runtime.oplog(ctx.tenant_id, ctx.user_id, "delete", "knowledge_document",
+                      doc_id, ctx.trace_id, ctx.ip)
+        return {"id": doc_id, "deleted": True}
 
     return app
 
