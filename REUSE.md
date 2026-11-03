@@ -18,9 +18,12 @@
 | datamodel-code-generator | >=0.28 | MIT | 契约 → Pydantic v2 模型 | 手写模型 | 从同一 JSON Schema 源生成，保证两端一致 |
 | pydantic / jsonschema / pyyaml | >=2.9 / >=4.23 / >=6.0 | MIT / MIT / MIT | 契约校验与生成的基础库 | — | validate/gen 的支撑库，随 api-contract 引入 |
 | bcrypt | >=4.2 | Apache-2.0 | seed 演示运营账号口令哈希（PRD 6.1 指定 bcrypt cost≥12 存储格式） | argon2-cffi、passlib | pyca 官方实现、维护活跃；PRD 已指定 bcrypt 格式，无选型分歧；仅 demo 数据准备阶段使用 |
+| pytest-cov | >=7.1 | MIT | 测试覆盖率报告（M3 要求 ≥70%） | coverage.py 裸用 | pytest 官方插件生态事实标准；CLAUDE.md 完成定义需要覆盖率报告 |
+| networkx | >=3.7 | BSD-3-Clause | M3 路网图数据结构与 A*/Dijkstra 算法底座 | Navigine/Indoor-Routing-Library（C++、无 license、20 个月未动）、自写图算法 | 手册 7.3 选型胜出：CLAUDE.md 冻结选型；电梯/扶梯惩罚、无障碍、错误码等业务权重层全部自建其上；BSD 宽松可商用 |
+| react-zoom-pan-pinch | ^4.2 | MIT | M4 地图缩放/拖动引擎（自建分层 SVG 组件内使用） | svg-pan-zoom、@use-gesture/react、自写手势 | 手册 7.3 选型胜出：1958★、5 天前仍在提交；Pathpal（无 license、停更原型）与 OpenIndoorMaps（MapLibre 地理坐标栈，与 V1 SVG 平面坐标决策冲突）仅作交互参考 |
 
 ## 待引入（后续任务按流程调研后登记）
 
 - FastAPI / SQLAlchemy 2.x / asyncpg — M1 任务时登记
-- networkx — M3 任务时登记
 - LangGraph — M5 任务时登记
+- 已按 7.3 选型登记：networkx（M3）、pytest-cov（M3）、react-zoom-pan-pinch（M4）；Pathpal 与 OpenIndoorMaps 不引入，仅作交互参考（理由见上表）
