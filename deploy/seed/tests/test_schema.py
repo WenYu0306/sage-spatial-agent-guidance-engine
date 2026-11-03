@@ -10,7 +10,7 @@ import pytest
 EXPECTED_TABLES = {
     "tenants", "users", "roles", "venues", "floors", "map_layers",
     "poi_categories", "pois", "activities", "coupons", "knowledge_documents",
-    "route_nodes", "route_edges",
+    "route_nodes", "route_edges", "knowledge_chunks",
 }
 
 # 表 → 关键列抽样（防迁移走样，非全量 DDL 复制）
@@ -32,6 +32,8 @@ EXPECTED_COLUMNS = {
     "route_nodes": {"floor_id", "node_type", "poi_id", "x", "y", "accessible"},
     "route_edges": {"from_node_id", "to_node_id", "edge_type", "distance_meter",
                     "weight", "accessible", "is_bidirectional"},
+    "knowledge_chunks": {"document_id", "tenant_id", "venue_id", "chunk_index",
+                         "content", "token_count", "embedding"},
 }
 
 # 这些表的唯一约束各只有一个（PRD DDL 如此），按"列并集"比对即可
@@ -42,6 +44,7 @@ EXPECTED_UNIQUES = {
     "map_layers": {"floor_id", "version"},
     "poi_categories": {"tenant_id", "venue_type", "code"},
     "route_edges": {"from_node_id", "to_node_id", "edge_type"},
+    "knowledge_chunks": {"document_id", "chunk_index"},
 }
 
 
