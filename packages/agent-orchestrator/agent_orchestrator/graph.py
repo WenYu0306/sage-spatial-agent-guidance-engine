@@ -21,13 +21,13 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 
 from .intent import parse_intent
-from .tools import ToolResult, run_tool
+from .tools import run_tool
 
 MAX_TOOL_CALLS = 6
 BUDGET_SECONDS = 12.0
 
+# intent → 依序执行的计划步 key（每步由 _PLANNED_STEPS 生成 [(code, args), ...]）
 TOOL_PLAN: dict[str, list[str]] = {
-    # intent → 依序执行的"计划步"（plan 步是函数名，见 _PLANNED_STEPS）
     "facility_nearest": ["nearest_and_route"],
     "poi_search": ["search_and_rank"],
     "poi_recommend": ["search_scene", "promotions", "rank", "knowledge"],
@@ -93,51 +93,6 @@ def _intention(state: AgentState, config) -> dict:
     return {"intent": parsed, "turn_started": time.monotonic()}
 
 
-def _run_planned(state: AgentState, config, plan_name: str, args: dict) -> tuple[str, ToolResult]:
-    """执行一个计划步：真正映射到工具 code 与参数。"""
-    ctx = _ctx(config)["ctx"]
-    code = {
-        "nearest_and_route": "facility.nearest",
-        "search_and_rank": "poi.search",
-        "search_scene": "poi.search",
-        "promotions": "promotion.list",
-        "rank": "recommend.rank",
-        "knowledge": "knowledge.query",
-        "route_to_poi": "route.plan",
-        "claim_coupon": "coupon.claim",
-    }[plan_name]
-    return code, run_tool(code, args, ctx, seen=_ctx(config).setdefault("seen", set()))
-
-
-_PLANNED_STEPS = {
-    "nearest_and_route": lambda s, c: ([
-        {"facility": s["intent"]["slots"].get("category") or "卫生间"},
-        {"to_poi_name": s["intent"]["slots"].get("category") or "卫生间"},
-    ]),
-    "search_and_rank": lambda s, c: [
-        {"category": s["intent"]["slots"].get("category"),
-         "keyword": s["intent"]["slots"].get("poi_name"),
-         "scene_tag": s["intent"]["slots"].get("scene_tag")},
-    ],
-    "search_scene": lambda s, c: [
-        {"category": s["intent"]["slots"].get("category"),
-         "scene_tag": s["intent"]["slots"].get("scene_tag")},
-    ],
-    "promotions": lambda s, c: [{}],
-    "route_to_poi": lambda s, c: [
-        {"to_poi_name": s["intent"]["slots"].get("poi_name"),
-         "prefer_accessible": bool(c["ctx"].prefer_accessible)},
-    ],
-    "rank": lambda s, c: [{"candidates": _candidate_ids(s)}],
-    "knowledge": lambda s, c: [{"query": s["message"], "threshold": 0.30}],
-    "claim_coupon": lambda s, c: [
-        {"coupon_title": s["intent"]["slots"].get("category")
-         or s["intent"]["slots"].get("poi_name") or "",
-         "anonymous_id": c.get("anonymous_id") or "anonymous-demo"},
-    ],
-}
-
-
 def _candidate_ids(state: AgentState) -> list[int]:
     for key in ("poi.search",):
         items = (state.get("tool_results") or {}).get(key, {}).get("items") or []
@@ -146,8 +101,48 @@ def _candidate_ids(state: AgentState) -> list[int]:
     return []
 
 
+_PLANNED_STEPS = {
+    # 每步返回 [(tool_code, args), ...]；ctx 从 _ctx(config) 取（修 Key 根因）
+    "nearest_and_route": lambda s, c: [
+        ("facility.nearest",
+         {"facility": s["intent"]["slots"].get("category") or "卫生间"}),
+        ("route.plan",
+         {"to_poi_name": s["intent"]["slots"].get("category") or "卫生间"}),
+    ],
+    "search_and_rank": lambda s, c: [
+        ("poi.search",
+         {"category": s["intent"]["slots"].get("category"),
+          "keyword": s["intent"]["slots"].get("poi_name"),
+          "scene_tag": s["intent"]["slots"].get("scene_tag")}),
+    ],
+    "search_scene": lambda s, c: [
+        ("poi.search",
+         {"category": s["intent"]["slots"].get("category"),
+          "scene_tag": s["intent"]["slots"].get("scene_tag")}),
+    ],
+    "promotions": lambda s, c: [("promotion.list", {})],
+    "route_to_poi": lambda s, c: [
+        ("route.plan",
+         {"to_poi_name": s["intent"]["slots"].get("poi_name")
+          or s["intent"]["slots"].get("category"),
+          "prefer_accessible": bool(_ctx(c)["ctx"].prefer_accessible)}),
+    ],
+    "rank": lambda s, c: [("recommend.rank", {"candidates": _candidate_ids(s)})],
+    "knowledge": lambda s, c: [("knowledge.query",
+                                {"query": s["message"], "threshold": 0.30})],
+    "claim_coupon": lambda s, c: [
+        ("coupon.claim",
+         {"coupon_title": s["intent"]["slots"].get("category")
+          or s["intent"]["slots"].get("poi_name") or "",
+          "anonymous_id": _ctx(c).get("anonymous_id") or "anonymous-demo"}),
+    ],
+}
+
+
 def _tools(state: AgentState, config) -> dict:
     """按意图计划依序执行工具：预算（≤6 次/12s）与去重在循环内强制。"""
+    cfg = _ctx(config)
+    ctx = cfg["ctx"]
     intent = state["intent"]["intent"]
     steps = TOOL_PLAN.get(intent, [])
     results: dict[str, Any] = dict(state.get("tool_results") or {})
@@ -160,22 +155,25 @@ def _tools(state: AgentState, config) -> dict:
         if calls >= MAX_TOOL_CALLS or time.monotonic() > deadline:
             degraded = True
             break
-        for args in _PLANNED_STEPS[plan_name](state, config):
+        for code, args in _PLANNED_STEPS[plan_name](state, config):
             if calls >= MAX_TOOL_CALLS or time.monotonic() > deadline:
                 degraded = True
                 break
-            code, result = _run_planned(state, config, plan_name, args)
+            result = run_tool(code, args, ctx, seen=cfg.setdefault("seen", set()))
             t0 = time.monotonic()
             calls += 1
             results[code] = result.data
-            status = "ok" if result.ok and not result.degraded else (
-                "ok" if result.ok else "error")
+            status = "ok" if result.ok else "error"
             _tracer(config, state, "tool_call", code, args, result.data, status,
                     int((time.monotonic() - t0) * 1000), result.error_code)
             if result.error_code:
                 errors.append(result.error_code)
-            if not result.ok or result.degraded:
-                degraded = degraded or result.degraded
+            # degraded 语义=回答完整性受损：硬错误/知识降级/预算超限才置位；
+            # 路线文字指引等工具级提示只记 error_code，不拉低整轮状态
+            if not result.ok:
+                degraded = True
+            if code == "knowledge.query" and result.degraded:
+                degraded = True
 
     return {"tool_results": results, "tool_calls": calls,
             "degraded": degraded, "error_codes": errors}
@@ -258,13 +256,21 @@ def _unknown_poi_names(answer: str, known: set[str]) -> list[str]:
 
     精确包含（互为子串）即认可；不在名单 → 疑似幻觉，降级为列表卡片。
     """
+    generic = {
+        "火锅店", "咖啡店", "奶茶店", "便利店", "甜品店", "服装店", "书店", "鞋店",
+        "玩具店", "眼镜店", "餐厅", "面馆", "日料店", "西餐厅", "美发店", "理发店",
+        "花店", "药店", "店铺", "商店", "全馆", "本馆",
+    }
+    stop_chars = set("的了是有在去指找哪全这那你我三几几聊说想推荐")
+
     suspects = []
-    for w in set(_STORE_SUFFIX.findall(answer)):
-        if w in known:
+    for w in {m[-5:] for m in _STORE_SUFFIX.findall(answer)}:
+        w = re.sub(r"^[家间位个]", "", w)  # 量词被数字截断的残片："家店铺"→"店铺"
+        if w in known or w in generic:
             continue
+        if any(ch in w for ch in stop_chars):
+            continue  # 含功能字的短语（"找到卖衣服的店"）不是店名
         if any(w in k or k in w for k in known):
-            continue
-        if w in {"火锅店", "咖啡店", "便利店", "奶茶店"}:  # 泛指业态词，非具体店名
             continue
         suspects.append(w)
     return sorted(suspects)

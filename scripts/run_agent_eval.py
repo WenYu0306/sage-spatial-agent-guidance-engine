@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -25,9 +26,12 @@ META_KEYS = {"出处", "路线", "列表"}
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--stage", default="retrieval", choices=["retrieval"])
+    ap.add_argument("--stage", default="retrieval", choices=["retrieval", "full"])
     ap.add_argument("--threshold", type=float, default=None)
+    ap.add_argument("--orch", default=os.environ.get("SVC_ORCHESTRATOR", "http://localhost:8941"))
     args = ap.parse_args()
+    if args.stage == "full":
+        return run_full(args)
 
     # .env 兜底加载
     env = REPO / ".env"
@@ -72,5 +76,85 @@ def main() -> int:
     return 0
 
 
+def run_full(args) -> int:
+    # 全链路评测：经 orchestrator SSE 真跑 20 问，输出 PRD 附录 B 口径的表
+    import httpx
+
+    orch = args.orch
+    baseline = yaml.safe_load((REPO / "deploy/seed/data/eval_baseline.yaml").read_text())
+    venue_id = int(os.environ.get("EVAL_VENUE_ID", "1"))
+
+    def chat(message):
+        events, cur_event, cur_data = [], "", ""
+        with httpx.stream("POST", orch + "/api/v1/agent/chat",
+                          json={"venue_id": venue_id, "message": message},
+                          timeout=60) as resp:
+            for line in resp.iter_lines():
+                if line.startswith("event: "):
+                    cur_event = line[7:]
+                elif line.startswith("data: "):
+                    cur_data = json.loads(line[6:])
+                elif line == "" and cur_event:
+                    events.append((cur_event, cur_data))
+                    cur_event, cur_data = "", ""
+        return events
+
+    rows = []
+    for case in baseline["cases"]:
+        try:
+            events = chat(case["question"])
+        except Exception as exc:
+            rows.append({"case": case, "actual": "EXC", "chain": [], "err": str(exc)[:50]})
+            continue
+        by_type = {}
+        for ev, data in events:
+            by_type.setdefault(ev, []).append(data)
+        done = by_type.get("done", [{}])[-1]
+        answer = "".join(d.get("text", "") for d in by_type.get("delta", []))
+        cards = by_type.get("card", [])
+        session_id = by_type.get("meta", [{}])[0].get("session_id")
+        steps = httpx.get(orch + "/api/v1/agent/sessions/" + str(session_id) + "/trace",
+                          timeout=30).json().get("steps", [])
+        actual = "?"
+        for st in steps:
+            if st["step_type"] == "intent_parse" and st.get("output"):
+                actual = st["output"].get("intent", "?")
+                break
+        chain = [st["tool_code"] for st in steps if st["step_type"] == "tool_call"]
+        hallucinated = any(st["step_type"] == "post_validate" for st in steps)
+        keys = [str(k) for k in case.get("answer_keys", []) if k not in META_KEYS]
+        blob = answer + json.dumps(cards, ensure_ascii=False)
+        poi_hit = any(k in blob for k in keys)
+        type_check = {
+            "venue_info": bool(by_type.get("citations")),
+            "fallback": (not hallucinated) and done.get("status") == "ok",
+            "coupon_claim": "coupon.claim" in chain or poi_hit,
+        }.get(case["intent"], poi_hit or bool(chain))
+        passed = (actual == case["intent"]) and type_check and done.get("status") == "ok"
+        rows.append({"case": case, "actual": actual, "chain": chain,
+                     "answer": answer[:26], "passed": passed,
+                     "latency": done.get("latency_ms", 0), "hall": hallucinated})
+
+    n_pass = sum(1 for r in rows if r.get("passed"))
+    cols = ("id", "期望意图", "实际意图", "工具链", "幻觉", "ms", "结论")
+    widths = (4, 14, 14, 22, 6, 6)
+    print("  ".join(c.ljust(w) for c, w in zip(cols, widths)))
+    print("-" * 100)
+    for r in rows:
+        if "err" in r:
+            print("%-4s%-18s%-18s%-34s%-4s%-7s%s" % (r["case"]["id"], r["case"]["intent"],
+                  r["actual"], "-", "-", "-", "EXC " + r["err"]))
+        else:
+            print("%-4s%-18s%-18s%-34s%-4s%-7s%s" % (
+                r["case"]["id"], r["case"]["intent"], r["actual"],
+                "->".join(r["chain"])[:32], "是" if r["hall"] else "否",
+                r["latency"], chr(0x2713) if r["passed"] else chr(0x2717)))
+    print("-" * 100)
+    rate = 100.0 * n_pass / len(rows)
+    print("全链路通过率：%d/%d = %.0f%%（orch=%s）" % (n_pass, len(rows), rate, orch))
+    return 0
+
+
 if __name__ == "__main__":
+
     sys.exit(main())
