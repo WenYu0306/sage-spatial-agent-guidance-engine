@@ -21,6 +21,7 @@
 | pytest-cov | >=7.1 | MIT | 测试覆盖率报告（M3 要求 ≥70%） | coverage.py 裸用 | pytest 官方插件生态事实标准；CLAUDE.md 完成定义需要覆盖率报告 |
 | networkx | >=3.7 | BSD-3-Clause | M3 路网图数据结构与 A*/Dijkstra 算法底座 | Navigine/Indoor-Routing-Library（C++、无 license、20 个月未动）、自写图算法 | 手册 7.3 选型胜出：CLAUDE.md 冻结选型；电梯/扶梯惩罚、无障碍、错误码等业务权重层全部自建其上；BSD 宽松可商用 |
 | react-zoom-pan-pinch | ^4.2 | MIT | M4 地图缩放/拖动引擎（自建分层 SVG 组件内使用） | svg-pan-zoom、@use-gesture/react、自写手势 | 手册 7.3 选型胜出：1958★、5 天前仍在提交；Pathpal（无 license、停更原型）与 OpenIndoorMaps（MapLibre 地理坐标栈，与 V1 SVG 平面坐标决策冲突）仅作交互参考 |
+| react / react-dom / vite / typescript | ^19 / ^7 / ^5.9 | MIT / MIT / MIT / Apache-2.0 | M4 前端运行时与构建（CLAUDE.md 第 4 节冻结栈，首次进入 package.json 时补登记） | — | 栈在 CLAUDE.md 已定；按"未登记依赖不进 package.json"纪律在此补记来源 |
 
 ## 待引入（后续任务按流程调研后登记）
 

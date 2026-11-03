@@ -1,10 +1,15 @@
 // 跨包 import 边界检查（ARCHITECTURE 4.1 第 3 条）。
-// 脚手架阶段用 .js 演示文件验证；前端代码落地时再引入 @typescript-eslint（届时登记 REUSE.md）。
+// 脚手架阶段用 .js 演示文件验证；TS 落地后由 typescript-eslint 解析（D-007 履约，已登记 REUSE.md）。
 import boundaries from "eslint-plugin-boundaries";
+import tseslint from "typescript-eslint";
 
 const pkgs = ["api-contract", "map-render", "admin-web", "screen-web", "mobile-h5"];
 
 export default [
+  ...tseslint.configs.recommended.map((c) => ({
+    ...c,
+    files: ["packages/**/*.ts", "packages/**/*.tsx"],
+  })),
   {
     ignores: ["**/node_modules/**", "**/dist/**", "packages/api-contract/generated/**"],
   },
