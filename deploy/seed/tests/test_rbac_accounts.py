@@ -111,8 +111,16 @@ def test_reseed_never_overwrites_password(seed_mod, tid):
     new_hash = bcrypt.hashpw(b"changed-by-test", bcrypt.gensalt(rounds=12)).decode()
     with psycopg.connect(seed_mod_dsn()) as conn, conn.cursor() as cur:
         row = _account(cur, tid, "demo_editor")
+        cur.execute("select password_hash from users where id=%s", (row[0],))
+        original = cur.fetchone()[0]
         cur.execute("update users set password_hash=%s where id=%s", (new_hash, row[0]))
         conn.commit()
-        seed_mod.run_seed()
-        cur.execute("select password_hash from users where id=%s", (row[0],))
-        assert cur.fetchone()[0] == new_hash, "重复 seed 覆写了口令（幂等纪律）"
+        try:
+            seed_mod.run_seed()
+            cur.execute("select password_hash from users where id=%s", (row[0],))
+            assert cur.fetchone()[0] == new_hash, "重复 seed 覆写了口令（幂等纪律）"
+        finally:
+            # 还原现场：测试不得留下被改写的演示账号口令
+            cur.execute("update users set password_hash=%s where id=%s",
+                        (original, row[0]))
+            conn.commit()
