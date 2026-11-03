@@ -30,6 +30,8 @@ class ProviderConfig:
     api_key: str | None
     chat_model: str
     embedding_model: str
+    embedding_base_url: str          # embedding 可独立供应商（如 chat=DeepSeek、embed=百炼）
+    embedding_api_key: str | None    # 缺省回落 base_url/api_key
     embed_dim: int
     timeout_s: float
     max_retries: int
@@ -37,11 +39,15 @@ class ProviderConfig:
 
     @staticmethod
     def from_env() -> "ProviderConfig":
+        base_url = os.environ.get("LLM_BASE_URL", "https://api.openai.com/v1")
+        api_key = os.environ.get("LLM_API_KEY") or None
         return ProviderConfig(
-            base_url=os.environ.get("LLM_BASE_URL", "https://api.openai.com/v1"),
-            api_key=os.environ.get("LLM_API_KEY") or None,
+            base_url=base_url,
+            api_key=api_key,
             chat_model=os.environ.get("LLM_CHAT_MODEL", "gpt-4o-mini"),
             embedding_model=os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small"),
+            embedding_base_url=os.environ.get("EMBEDDING_BASE_URL") or base_url,
+            embedding_api_key=os.environ.get("EMBEDDING_API_KEY") or api_key,
             embed_dim=int(os.environ.get("EMBED_DIM", "1024")),
             timeout_s=float(os.environ.get("LLM_TIMEOUT_S", "30")),
             max_retries=int(os.environ.get("LLM_MAX_RETRIES", "2")),
@@ -94,9 +100,15 @@ class LLMProvider:
 
         self.config = config
         self.counter = _DailyCounter()
-        self._client = OpenAI(
+        self._client = OpenAI(  # chat 用（M5）
             api_key=config.api_key,
             base_url=config.base_url,
+            timeout=config.timeout_s,
+            max_retries=config.max_retries,
+        )
+        self._embed_client = OpenAI(  # embedding 可独立供应商
+            api_key=config.embedding_api_key,
+            base_url=config.embedding_base_url,
             timeout=config.timeout_s,
             max_retries=config.max_retries,
         )
@@ -106,7 +118,7 @@ class LLMProvider:
             return []
         self.counter.bump(self.config.daily_limit)
         try:
-            resp = self._client.embeddings.create(
+            resp = self._embed_client.embeddings.create(
                 model=self.config.embedding_model,
                 input=texts,
                 dimensions=self.config.embed_dim,

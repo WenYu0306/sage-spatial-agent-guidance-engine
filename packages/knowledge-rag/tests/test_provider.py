@@ -72,7 +72,7 @@ def test_openai_provider_embed_calls_sdk(monkeypatch):
 
             return R()
 
-    p._client = type("C", (), {"embeddings": FakeEmbeddings()})()
+    p._embed_client = type("C", (), {"embeddings": FakeEmbeddings()})()
     p.counter = __import__("knowledge_rag.provider", fromlist=["_DailyCounter"])._DailyCounter()
 
     vecs = p.embed(["hello", "world"])
@@ -92,6 +92,25 @@ def test_sdk_error_translated_to_provider_unavailable(monkeypatch):
         def create(self, model, input, dimensions=None):
             raise openai.OpenAIError("404 无此端点（模拟 DeepSeek 无 embeddings）")
 
-    p._client = type("C", (), {"embeddings": FakeEmbeddings()})()
+    p._embed_client = type("C", (), {"embeddings": FakeEmbeddings()})()
     with pytest.raises(ProviderUnavailableError):
         p.embed(["测试"])
+
+
+def test_embedding_endpoint_falls_back_to_llm_creds(monkeypatch):
+    monkeypatch.setenv("LLM_API_KEY", "sk-llm")
+    monkeypatch.setenv("LLM_BASE_URL", "http://llm/v1")
+    monkeypatch.delenv("EMBEDDING_API_KEY", raising=False)
+    monkeypatch.delenv("EMBEDDING_BASE_URL", raising=False)
+    cfg = ProviderConfig.from_env()
+    assert cfg.embedding_base_url == "http://llm/v1"
+    assert cfg.embedding_api_key == "sk-llm"
+
+
+def test_embedding_endpoint_overrides(monkeypatch):
+    monkeypatch.setenv("LLM_API_KEY", "sk-llm")
+    monkeypatch.setenv("EMBEDDING_API_KEY", "sk-embed")
+    monkeypatch.setenv("EMBEDDING_BASE_URL", "http://embed/v1")
+    cfg = ProviderConfig.from_env()
+    assert cfg.embedding_base_url == "http://embed/v1"
+    assert cfg.embedding_api_key == "sk-embed"
