@@ -5,6 +5,7 @@ import { decodeJwtPayload, profileStore, tokenStore } from "./lib/auth.ts";
 import { navigate, useHashRoute } from "./router.tsx";
 import { Badge, Button, ToastHost } from "./components/ui.tsx";
 import LoginPage from "./pages/Login.tsx";
+import PoisPage from "./pages/Pois.tsx";
 import VenuesPage from "./pages/Venues.tsx";
 
 const NAV = [
@@ -89,7 +90,7 @@ function Shell({ route }: { route: string }) {
 }
 
 function Page({ route }: { route: string }) {
-  if (route.startsWith("/pois")) return <ComingSoon title="POI 管理" note="B2 交付" />;
+  if (route.startsWith("/pois")) return <PoisPage />;
   if (route.startsWith("/activities")) return <ComingSoon title="活动管理" note="B3 交付" />;
   if (route.startsWith("/coupons")) return <ComingSoon title="优惠管理" note="B3 交付" />;
   if (route.startsWith("/knowledge")) return <ComingSoon title="知识内容" note="B3 交付" />;
