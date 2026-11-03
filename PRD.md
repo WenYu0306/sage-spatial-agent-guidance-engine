@@ -221,8 +221,12 @@ CREATE TABLE user_roles (
   role_id   BIGINT NOT NULL REFERENCES roles(id),
   venue_id  BIGINT NULL,              -- 角色绑定的场地范围，NULL 表示租户全局
   merchant_id BIGINT NULL,            -- merchant 角色绑定的门店
-  PRIMARY KEY (user_id, role_id, venue_id)
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- 2026-11-04 修订：原主键 (user_id, role_id, venue_id) 含可空列（PG 主键列不可 NULL），
+-- 按表达式唯一索引实现同一"用户×角色×范围唯一"语义（0006 实装一致，见 D-019）。
+CREATE UNIQUE INDEX uq_user_roles_scope ON user_roles(
+  user_id, role_id, COALESCE(venue_id, 0), COALESCE(merchant_id, 0));
 
 CREATE TABLE devices (
   id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
