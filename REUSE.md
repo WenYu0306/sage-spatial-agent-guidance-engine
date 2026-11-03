@@ -24,6 +24,11 @@
 | react / react-dom / vite / typescript | ^19 / ^7 / ^5.9 | MIT / MIT / MIT / Apache-2.0 | M4 前端运行时与构建（CLAUDE.md 第 4 节冻结栈，首次进入 package.json 时补登记） | — | 栈在 CLAUDE.md 已定；按"未登记依赖不进 package.json"纪律在此补记来源 |
 | typescript-eslint | ^8 | MIT | TS 代码的 eslint 解析与 lint（D-007 预留，M4 落地时引入） | — | 7.1 决策预留的接线点；map-render 首批 TS 代码落地按约引入（补登记：此前补丁锚点静默失效，本行为补录） |
 | openai（Python SDK） | >=2.x | MIT | LLMProvider 的 OpenAI 兼容 HTTP 底座（embed/chat，M6/M5） | 手写 httpx 封装 | CLAUDE.md 第 4 节钦定"OpenAI 兼容 SDK"；官方维护、重试/超时现成；Provider 抽象仍自建在其上 |
+| langgraph | >=1.2 | MIT | M5 Agent 有状态编排（StateGraph/条件边/checkpointer） | 自写状态机 | CLAUDE.md 第 4 节钦定的唯一 AI 框架；手册 7.4 指定 |
+| langgraph-checkpoint-postgres | >=3.2 | MIT | LangGraph 会话检查点持久化（PostgresSaver） | 自写存档 | langgraph 官方配套，多轮上下文必需 |
+| fastapi | >=0.162 | MIT | M5 SSE 端点与后续全部 HTTP API | flask、starlette 裸用 | CLAUDE.md 第 4 节钦定栈；SSE 用 StreamingResponse 无需额外库 |
+| uvicorn | >=0.54 | BSD-3-Clause | ASGI 服务器 | hypercorn | fastapi 官方推荐组合 |
+| httpx | >=0.28 | BSD-3-Clause | 模块间 HTTP 客户端（M5 工具层调兄弟模块服务）+ FastAPI TestClient 依赖 | requests | starlette TestClient 官方依赖；async 友好 |
 
 ## 待引入（后续任务按流程调研后登记）
 

@@ -11,6 +11,7 @@ EXPECTED_TABLES = {
     "tenants", "users", "roles", "venues", "floors", "map_layers",
     "poi_categories", "pois", "activities", "coupons", "knowledge_documents",
     "route_nodes", "route_edges", "knowledge_chunks",
+    "agent_sessions", "agent_messages", "agent_traces", "agent_tools", "coupon_claims",
 }
 
 # 表 → 关键列抽样（防迁移走样，非全量 DDL 复制）
@@ -34,6 +35,17 @@ EXPECTED_COLUMNS = {
                     "weight", "accessible", "is_bidirectional"},
     "knowledge_chunks": {"document_id", "tenant_id", "venue_id", "chunk_index",
                          "content", "token_count", "embedding"},
+    "agent_sessions": {"tenant_id", "venue_id", "device_id", "anonymous_id",
+                       "channel", "status", "handed_to_session_id"},
+    "agent_messages": {"session_id", "tenant_id", "role", "content", "structured",
+                       "tokens_in", "tokens_out"},
+    "agent_traces": {"session_id", "message_id", "tenant_id", "trace_id", "step_index",
+                     "step_type", "tool_code", "input", "output", "status",
+                     "latency_ms", "error_code"},
+    "agent_tools": {"code", "name", "description", "input_schema", "output_schema",
+                    "endpoint", "timeout_ms", "enabled", "version"},
+    "coupon_claims": {"coupon_id", "anonymous_id", "claim_status", "claimed_at",
+                      "used_at", "idempotency_key"},
 }
 
 # 这些表的唯一约束各只有一个（PRD DDL 如此），按"列并集"比对即可
@@ -45,6 +57,8 @@ EXPECTED_UNIQUES = {
     "poi_categories": {"tenant_id", "venue_type", "code"},
     "route_edges": {"from_node_id", "to_node_id", "edge_type"},
     "knowledge_chunks": {"document_id", "chunk_index"},
+    "agent_tools": {"code"},
+    "coupon_claims": {"idempotency_key"},
 }
 
 
