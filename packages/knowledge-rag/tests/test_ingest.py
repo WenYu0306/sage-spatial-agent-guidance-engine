@@ -16,6 +16,12 @@ def provider():
     mp = MonkeyPatch()
     yield MockProvider(ProviderConfig.from_env())  # 默认 EMBED_DIM=1024，与列定义一致
     mp.undo()
+    # 测试把全库换成了 mock 向量——用当前默认 Provider（有 key=真实）恢复，
+    # 避免污染后续真实向量评测（CI 无 key 时回落 mock，全库一致）
+    from knowledge_rag.ingest import ingest_venue
+    from knowledge_rag.provider import make_provider
+
+    ingest_venue("山雀里·栖云广场", "shanqueli-demo", provider=make_provider())
 
 
 def _dsn() -> str:

@@ -6,8 +6,8 @@ import json
 import logging
 
 import pytest
-
-from platform_core import config, logging as plog, trace
+from platform_core import config, trace
+from platform_core import logging as plog
 
 
 def test_trace_id_format():
