@@ -12,3 +12,5 @@
 - 2026-11-04 D-008 demo 数据源 = deploy/seed/data/*.yaml，自然键幂等 upsert（首遍 INSERT 后续 UPDATE，不删不重灌）；评测基线为文件资产不入库，运行记录仍写 packages/agent-orchestrator/EVAL.md。
 - 2026-11-04 D-009 poi_intro 知识文档由 pois 数据派生生成（不手写），保证文档与数据一致；"100 篇"口径 = 68 店铺介绍 + 17 场地指南 + 15 FAQ，设施不生成介绍。
 - 2026-11-04 D-010 演示运营账号口令走环境变量 SEED_DEMO_ADMIN_PASSWORD（bcrypt cost 12）；重复 seed 不覆写已存在账号的口令。
+- 2026-11-04 D-011 M3 权重按 PRD 6.3：weight=通行时间(秒)+惩罚，seed 预计算入库、引擎只读；电梯 ride 15s/扶梯 ride 25s 为 demo 构造参数（PRD 只给惩罚 45/15s）；扶梯东(x=850)上行、西(x=350)下行且非无障碍，跨层无障碍唯一通道为直梯。
+- 2026-11-04 D-012 前端测试用 node:test 原生跑 TS（Node 24 strip types），不引入 vitest；组件交互以纯函数抽测 + 演示页人工验证，组件级 DOM 测试随 M10 后台任务再评估。
