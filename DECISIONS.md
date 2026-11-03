@@ -21,3 +21,4 @@
 - 2026-11-04 D-016 工具双通道：数据类（poi/promotion/coupon/facility）demo 阶段直读共享 PRD-DDL 表（M8 服务化后换 endpoint）；算法类（route.plan/knowledge.query）走兄弟模块 HTTP 服务（import-linter 禁跨包 import）。
 - 2026-11-04 D-017 degraded 语义=回答完整性受损（硬错误/知识降级/预算超限/幻觉拦截）；路线文字指引等工具级提示只记 error_code 不拉低整轮状态。
 - 2026-11-04 D-018 platform_core 定位 L0 基础层（同 api-contract），各包可 import，在模块独立性契约中以 ignore_imports 显式豁免。
+- 2026-11-04 D-019 M1 认证：JWT HS256（PyJWT），access 2h 携带角色/范围、refresh 7d 最小化并轮换（旧 jti 进 Redis 黑名单带 TTL，降级内存）；凭证失败统一 401/1001 不区分原因（防枚举），越权 403/1003 写 operation_logs。PRD 6.1 user_roles 主键与可空 venue_id 矛盾，以表达式唯一索引 COALESCE 实现同语义。
