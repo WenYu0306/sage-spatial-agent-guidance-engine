@@ -71,10 +71,10 @@ class MockProvider:
         self.counter = _DailyCounter()
 
     def embed(self, texts: list[str]) -> list[list[float]]:
+        self.counter.bump(self.config.daily_limit)  # 与真实 Provider 一致：按 API 调用次数计
         dim = self.config.embed_dim
         out: list[list[float]] = []
         for t in texts:
-            self.counter.bump(self.config.daily_limit)
             h = hashlib.sha256(t.encode("utf-8")).digest()
             vec = [h[i % len(h)] / 255.0 for i in range(dim)]
             norm = math.sqrt(sum(x * x for x in vec)) or 1.0
