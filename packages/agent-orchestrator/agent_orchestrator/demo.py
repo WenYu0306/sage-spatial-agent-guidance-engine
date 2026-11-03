@@ -10,7 +10,6 @@ import json
 
 import httpx
 import psycopg
-
 from platform_core.config import Settings
 
 from .graph import build_graph
