@@ -59,6 +59,6 @@ target-version = "py312"
 select = ["E", "F", "I", "W"]
 
 [tool.pytest.ini_options]
-testpaths = ["packages/*/tests", "tests"]
+testpaths = ["packages/*/tests", "tests", "deploy/seed/tests"]
 # 多包同名测试模块（test_placeholder.py × N）需要 importlib 模式避免 import 冲突
 addopts = "--import-mode=importlib"
