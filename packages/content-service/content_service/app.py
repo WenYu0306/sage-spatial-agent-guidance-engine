@@ -15,8 +15,12 @@ import os
 import psycopg
 from fastapi import Depends, FastAPI, Query
 from fastapi.testclient import TestClient  # noqa: F401  （测试同款依赖）
-from platform_core.auth_router import AuthContext
-from platform_core.auth_router import AuthRuntime, create_auth_router, install_error_handlers
+from platform_core.auth_router import (
+    AuthContext,
+    AuthRuntime,
+    create_auth_router,
+    install_error_handlers,
+)
 
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
