@@ -1,7 +1,8 @@
 # dev 依赖容器（US-001 第 5 步）。密钥全部经 .env 注入，禁止写入本文件。
+# postgres 镜像用 pgvector 官方构建（M6 需要 vector 扩展；pg16 兼容原数据卷）。
 services:
   postgres:
-    image: postgres:16-alpine
+    image: docker.m.daocloud.io/pgvector/pgvector:pg16  # 直连 Docker Hub 超时，走 daocloud 源；官方名为 pgvector/pgvector:pg16
     container_name: sage-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-sage}
