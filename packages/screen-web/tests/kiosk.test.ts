@@ -51,3 +51,16 @@ test("decodeJwtPayload：CJK 与 base64url 安全", () => {
   assert.deepEqual(decodeJwtPayload(token), payload);
   assert.equal(decodeJwtPayload("garbage"), null);
 });
+
+test("createSSEParser：跨 chunk 事件帧与多 data 行", async () => {
+  const { createSSEParser } = await import("../src/lib/sse.ts");
+  const seen: Array<[string, string]> = [];
+  const feed = createSSEParser((event, data) => seen.push([event, data]));
+  feed('event: met');
+  feed('a\ndata: {"session_id": 88}\n\nevent: delta\ndata: {"text": "你');
+  feed('好"}\n\n');
+  assert.deepEqual(seen, [
+    ["meta", '{"session_id": 88}'],
+    ["delta", '{"text": "你好"}'],
+  ]);
+});

@@ -13,6 +13,10 @@ export interface DeviceIdentity {
   deviceCode: string;
   venueName: string;
   businessHours: string | null;
+  floorId: number | null;
+  floorName: string | null;
+  positionX: number | null;
+  positionY: number | null;
 }
 
 export interface ScreenConfig {
@@ -90,11 +94,15 @@ export async function deviceLogin(config: ScreenConfig): Promise<DeviceIdentity>
   if (deviceId == null) throw new ApiError(500, null, "登录响应缺 device_id");
   const me = await apiFetch<{
     data: { code: string; name: string; venue_id: number;
-            venue_name: string; business_hours: string | null };
+            venue_name: string; business_hours: string | null;
+            floor_id: number | null; floor_name: string | null;
+            position_x: number | null; position_y: number | null };
   }>("/api/v1/devices/me", { token });
   return {
     token, tenantId: claims.tenant_id as number, venueId: me.data.venue_id,
     deviceId, deviceName: me.data.name, deviceCode: me.data.code,
     venueName: me.data.venue_name, businessHours: me.data.business_hours,
+    floorId: me.data.floor_id, floorName: me.data.floor_name,
+    positionX: me.data.position_x, positionY: me.data.position_y,
   };
 }

@@ -724,18 +724,31 @@ def create_app(dsn: str) -> FastAPI:
 
     @app.get("/api/v1/devices/me")
     def device_me(ctx: AuthContext = Depends(runtime.dependency("device"))):
-        """设备身份自读（M11）：device_id 由 token 携带（devices.code == username 成对约定）。"""
+        """设备身份自读（M11）：device_id 由 token 携带（devices.code == username 成对约定）。
+
+        联表带出场地名/营业时间——PRD 16"设备只能拉取配置"的自读范围，不动 /venues 管理端点。
+        """
         row = one(
-            "select d.id, d.code, d.name, d.venue_id, d.status, d.app_version, d.last_seen_at "
-            "from devices d where d.id=%s and d.tenant_id=%s",
+            "select d.id, d.code, d.name, d.venue_id, d.status, d.app_version, "
+            "d.last_seen_at, v.name, v.settings, d.floor_id, f.name, "
+            "d.position_x, d.position_y "
+            "from devices d join venues v on v.id = d.venue_id "
+            "left join floors f on f.id = d.floor_id "
+            "where d.id=%s and d.tenant_id=%s",
             (ctx.device_id, ctx.tenant_id))
         if not row:
             raise HTTPException(status_code=404,
                                 detail="设备身份未登记（devices.code 须与用户名一致）")
+        settings = row[8] or {}
         return {"data": {"device_id": row[0], "code": row[1], "name": row[2],
                          "venue_id": row[3], "status": row[4],
                          "app_version": row[5],
-                         "last_seen_at": row[6].isoformat() if row[6] else None}}
+                         "last_seen_at": row[6].isoformat() if row[6] else None,
+                         "venue_name": row[7],
+                         "business_hours": settings.get("business_hours"),
+                         "floor_id": row[9], "floor_name": row[10],
+                         "position_x": float(row[11]) if row[11] is not None else None,
+                         "position_y": float(row[12]) if row[12] is not None else None}}
 
     @app.post("/api/v1/devices/{device_id}/heartbeat")
     def device_heartbeat(device_id: int, body: HeartbeatBody,

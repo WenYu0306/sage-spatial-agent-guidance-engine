@@ -11,6 +11,7 @@ import {
   type DeviceIdentity,
 } from "./lib/device.ts";
 import { IDLE_MS, nextRoute, type KioskAction, type KioskRoute } from "./lib/kiosk.ts";
+import type { RoutePayload } from "./lib/route.ts";
 
 export function App() {
   const config = readScreenConfig();
@@ -20,6 +21,7 @@ export function App() {
   const [error, setError] = useState("");
   const [route, setRoute] = useState<KioskRoute>("home");
   const [chatSeed, setChatSeed] = useState("");
+  const [routePayload, setRoutePayload] = useState<RoutePayload | null>(null);
   const lastActive = useRef(Date.now());
 
   const boot = useCallback(() => {
@@ -101,7 +103,8 @@ export function App() {
         <Home session={session} onAsk={go} onAuthLost={onAuthLost} />
       )}
       {route === "chat" && (
-        <Chat session={session} seed={chatSeed} onBack={() => go("home")} />
+        <Chat session={session} seed={chatSeed} onBack={() => go("home")}
+              onRoute={(p) => { setRoutePayload(p); go("route"); }} />
       )}
       {route === "route" && (
         <KioskShell>
@@ -109,9 +112,23 @@ export function App() {
             className="self-start rounded-lg bg-slate-800 px-6 py-2 text-xl">
             ← 返回首页
           </button>
-          <div className="flex flex-1 items-center justify-center text-2xl text-slate-500">
-            路线展示页（④ 提交实现）
-          </div>
+          {routePayload ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-4">
+              <div className="text-4xl font-semibold">
+                {routePayload.start_label} → {routePayload.goal_label}
+              </div>
+              <div className="text-2xl text-slate-400">
+                {routePayload.summary.distance_meter} 米 · 约
+                {Math.round(routePayload.summary.eta_seconds)} 秒 · 途经
+                {routePayload.summary.floors.join(" → ")} 层
+              </div>
+              <div className="text-xl text-slate-500">地图绘制与扫码接力（④ 提交实现）</div>
+            </div>
+          ) : (
+            <div className="flex flex-1 items-center justify-center text-2xl text-slate-500">
+              请先在问答中生成路线
+            </div>
+          )}
         </KioskShell>
       )}
     </>
