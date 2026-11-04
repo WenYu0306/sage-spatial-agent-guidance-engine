@@ -82,6 +82,14 @@ def test_poi_search_by_scene_tag(ctx):
     assert r.ok and len(r.data["items"]) >= 1
 
 
+def test_poi_search_scene_tag_bidirectional_match(ctx):
+    """场景词与标签双向包含（PRD E04/E13 类问句）："家庭聚餐"须命中 tag[聚餐]。"""
+    r = run_tool("poi.search", {"scene_tag": "家庭聚餐"}, ctx)
+    assert r.ok and len(r.data["items"]) >= 1, "家庭聚餐应命中聚餐类店铺"
+    r2 = run_tool("poi.search", {"scene_tag": "情侣约会"}, ctx)
+    assert r2.ok and len(r2.data["items"]) >= 1, "情侣约会应命中约会类店铺"
+
+
 def test_facility_nearest_same_floor_first(ctx):
     r = run_tool("facility.nearest", {"facility": "卫生间"}, ctx)
     assert r.ok and r.data["items"]

@@ -66,6 +66,15 @@ def _ctx(config) -> dict:
     return config["configurable"]  # {"ctx": ToolContext, "provider": ..., "tracer": ...}
 
 
+def _clip(obj) -> str:
+    """trace 载荷截断：盲切 JSON 字符串会产出非法 JSON（列是 json 型），
+    超长时整体包一层字符串字段，保持可解析。"""
+    raw = json.dumps(obj, ensure_ascii=False, default=str)
+    if len(raw) <= 2000:
+        return raw
+    return json.dumps({"_truncated": raw[:1900]}, ensure_ascii=False)
+
+
 def _tracer(config, state: AgentState, step_type: str, tool_code: str | None,
             data_in: object, data_out: object, status: str, latency_ms: int,
             error_code: int | None = None) -> None:
@@ -79,8 +88,7 @@ def _tracer(config, state: AgentState, step_type: str, tool_code: str | None,
             "select %s, %s, %s, %s, coalesce(max(step_index),0)+1, %s, %s, %s, %s, %s, %s, %s "
             "from agent_traces where message_id=%s",
             (state["session_id"], state["message_id"], state["tenant_id"], state["trace_id"],
-             step_type, tool_code, json.dumps(data_in, ensure_ascii=False, default=str)[:2000],
-             json.dumps(data_out, ensure_ascii=False, default=str)[:2000],
+             step_type, tool_code, _clip(data_in), _clip(data_out),
              status, latency_ms, error_code, state["message_id"]),
         )
 
@@ -158,7 +166,10 @@ def _tools(state: AgentState, config) -> dict:
         if calls >= MAX_TOOL_CALLS or time.monotonic() > deadline:
             degraded = True
             break
-        for code, args in _PLANNED_STEPS[plan_name](state, config):
+        # 步骤 lambda 必须看到本轮已累积的工具结果（否则 rank 恒拿空候选——
+        # state 是节点入口的冻结快照，同轮前序步骤结果只存在局部 results）
+        view = {**state, "tool_results": results}
+        for code, args in _PLANNED_STEPS[plan_name](view, config):
             if calls >= MAX_TOOL_CALLS or time.monotonic() > deadline:
                 degraded = True
                 break

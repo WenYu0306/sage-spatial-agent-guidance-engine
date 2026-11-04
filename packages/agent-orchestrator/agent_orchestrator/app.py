@@ -8,6 +8,7 @@ chat_stream 增强，README 已注明）。角色校验留 M1 完整版 RBAC。
 from __future__ import annotations
 
 import json
+import logging
 import re
 import secrets
 import time
@@ -25,6 +26,7 @@ from pydantic import BaseModel, Field
 from .graph import build_graph
 from .tools import ToolContext
 
+logger = logging.getLogger(__name__)
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
 TENANT_CODE = "shanqueli-demo"
 VENUE_NAME = "山雀里·栖云广场"
@@ -151,7 +153,8 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
     saver = checkpointer
     graph = None
     http_route = httpx.Client(base_url=settings.route_engine_url, timeout=5)
-    http_knowledge = httpx.Client(base_url=settings.knowledge_rag_url, timeout=5)
+    # 嵌入 API 有秒级抖动，5s 实测会误伤（预算 12s 内取 8s）
+    http_knowledge = httpx.Client(base_url=settings.knowledge_rag_url, timeout=8)
     http_recommender = httpx.Client(base_url=settings.recommender_url, timeout=5)
     route_cache = _RouteCache(settings.redis_url)
 
@@ -265,6 +268,7 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
                      "recursion_limit": 25},
                 )
             except Exception:  # 3001：Agent 链路异常 → 兜底话术，不 500 不泄栈
+                logger.exception("agent 链路异常 trace_id=%s session=%s", trace_id, session_id)
                 status, error_code = "error", 3001
                 final = {"answer": "我暂时没有这方面的信息，你可以问问商场服务台（F1 层）。",
                          "cards": [], "citations": [], "degraded": True}

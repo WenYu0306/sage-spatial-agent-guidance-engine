@@ -142,3 +142,38 @@ def test_multi_turn_history_injected(client):
         any("我想吃火锅" in m["content"] for m in msgs if m["role"] == "user")
         for msgs in FakeChat.seen_histories
     ), "第二轮意图解析必须携带首轮历史"
+
+
+class FakeRecommendChat:
+    """poi_recommend 意图桩：验证 rank 步骤拿到同轮 search 的候选。"""
+
+    def chat(self, messages, **_kw):
+        if any("顾客说" in m["content"] for m in messages if m["role"] == "user"):
+            return "为你推荐这几家。", {"tokens_in": 1, "tokens_out": 1}
+        payload = json.dumps({"intent": "poi_recommend",
+                              "slots": {"category": "火锅", "scene_tag": "聚餐",
+                                        "poi_name": None, "need_route": False}})
+        return payload, {"tokens_in": 1, "tokens_out": 1}
+
+
+def test_rank_step_receives_same_turn_search_candidates():
+    """同轮依赖：rank 必须拿到本轮 poi.search 的候选（回归：曾读到冻结 state 而恒空）。"""
+    app = create_app(provider=FakeRecommendChat(), checkpointer=None)
+    client = TestClient(app)
+    vid, _ = _venue_ids()
+    with client.stream(
+        "POST", "/api/v1/agent/chat",
+        json={"venue_id": vid, "message": "推荐适合聚餐的火锅"},
+    ) as resp:
+        assert resp.status_code == 200
+        text = "".join(chunk for chunk in resp.iter_text())
+    sid = None
+    for block in text.split("\n\n"):
+        if block.startswith("event: meta"):
+            sid = json.loads(block.split("data: ", 1)[1])["session_id"]
+    assert sid
+    steps = client.get(f"/api/v1/agent/sessions/{sid}/trace").json()["steps"]
+    rank_inputs = [s["input"] for s in steps
+                   if s["step_type"] == "tool_call" and s["tool_code"] == "recommend.rank"]
+    assert rank_inputs, "rank 步骤未执行"
+    assert rank_inputs[0].get("candidates"), "rank 应拿到同轮 search 的候选"

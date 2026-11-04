@@ -171,3 +171,16 @@ def test_hallucinated_store_name_degrades(base_ids):
                           "session_id": session_id, "message_id": message_id}, config)
     assert final["degraded"] is True
     assert "冰晶甜品屋" not in final["answer"], "编造店名不得出现在最终回答"
+
+
+def test_trace_clip_always_valid_json():
+    """超长工具输出截断后必须仍是合法 JSON（回归：[:2000] 盲切导致 3001）。"""
+    import json as _json
+
+    from agent_orchestrator.graph import _clip
+    big = {"items": [{"name": "店" * 30, "tags": ["标签"], "hot": i} for i in range(12)]}
+    raw = _clip(big)
+    assert len(raw) <= 2100
+    assert _json.loads(raw)  # 可解析
+    small = _clip({"items": []})
+    assert _json.loads(small) == {"items": []}

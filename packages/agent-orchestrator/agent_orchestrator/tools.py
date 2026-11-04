@@ -124,8 +124,13 @@ def _poi_search(args: dict, ctx: ToolContext) -> ToolResult:
             sql += " and f.name = %s"
             params.append(args["floor_name"])
         if args.get("scene_tag"):
-            sql += " and p.tags @> %s::jsonb"
-            params.append(json.dumps([args["scene_tag"]]))
+            # 场景词与标签双向子串包含（"家庭聚餐"命中 tag[聚餐]，"情侣约会"命中 tag[约会]）：
+            # 精确 jsonb @> 会把自然语言场景词全部搜空（用户实测回归根因）
+            sql += (
+                " and exists (select 1 from jsonb_array_elements_text(p.tags) t "
+                "where t like '%%' || %s || '%%' or %s like '%%' || t || '%%')"
+            )
+            params.extend([args["scene_tag"], args["scene_tag"]])
         sql += " order by p.hot_score desc limit 12"
         cur.execute(sql, params)
         rows = cur.fetchall()
