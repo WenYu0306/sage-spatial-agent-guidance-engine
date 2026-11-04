@@ -98,3 +98,38 @@ def test_merchant_sees_store_scope_but_reads_all(client, tokens, accounts):
     r = client.get("/api/v1/pois", headers=_h(tokens["rbac_merchant"]),
                    params={"merchant_id": accounts["store_poi"]})
     assert r.json()["items"]
+
+
+def test_guest_reads_published_only(client, accounts, dsn):
+    """M12 guest 读端点（PRD 595 guest 除外）：无 token + ?venue_id= 可读，
+    但只见 published POI 与在窗优惠；草稿不可见。"""
+    tid, vid = accounts["tid"], accounts["vid"]
+    # 直插一篇草稿 POI
+    import psycopg
+
+    from platform_core.events import new_event_id
+    with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            "insert into pois (tenant_id, venue_id, floor_id, category_code, name, "
+            "status, position_x, position_y) values (%s, %s, "
+            "(select min(id) from floors where venue_id=%s), 'retail', %s, "
+            "'draft', 100, 100) returning id",
+            (tid, vid, vid, f"草稿店{new_event_id()[:6]}",))
+        draft_id = cur.fetchone()[0]
+        conn.commit()
+    r = client.get("/api/v1/pois", params={"venue_id": vid})
+    assert r.status_code == 200, r.text
+    names = [i["name"] for i in r.json()["items"]]
+    assert not any(n.startswith("草稿店") for n in names), "guest 不得见草稿"
+    assert r.json()["items"], "guest 应见到 published 店铺"
+    # 草稿详情直取也拦
+    assert client.get(f"/api/v1/pois/{draft_id}",
+                      params={"venue_id": vid}).status_code == 403
+    # 优惠在窗列表可读
+    rc = client.get("/api/v1/coupons", params={"venue_id": vid})
+    assert rc.status_code == 200 and "items" in rc.json()
+    # 缺 venue_id 的 guest 请求 → 401
+    assert client.get("/api/v1/pois").status_code == 401
+    with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+        cur.execute("delete from pois where id=%s", (draft_id,))
+        conn.commit()

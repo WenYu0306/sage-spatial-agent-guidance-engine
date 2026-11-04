@@ -209,3 +209,44 @@ def test_lockout_blocks_login_then_recovers(client, runtime, accounts, dsn):
                     (accounts["tid"],))
         conn.commit()
     assert _login(client, "rbac_merchant").status_code == 200
+
+
+def _guest_client(runtime) -> TestClient:
+    """本地构建含 guest 路由的应用（夹具 client 不含 demo 路由）。"""
+    app = FastAPI()
+    app.include_router(create_auth_router(runtime))
+    install_error_handlers(app)
+
+    @app.get("/api/v1/demo/guest-pois")
+    def guest_pois(ctx=Depends(runtime.optional())):
+        return {"tenant_id": ctx.tenant_id, "venue_id": ctx.venue_id, "roles": ctx.roles}
+
+    return TestClient(app)
+
+
+def test_optional_dependency_guest_with_venue_id(client, runtime, accounts):
+    """guest 依赖：无 token + ?venue_id= → 匿名身份（租户自场地反查，PRD 595 guest 除外）。"""
+    c = _guest_client(runtime)
+    r = c.get("/api/v1/demo/guest-pois", params={"venue_id": accounts["vid"]})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["tenant_id"] == accounts["tid"] and body["venue_id"] == accounts["vid"]
+    assert body["roles"] == ["guest"]
+
+
+def test_optional_dependency_requires_valid_venue(client, runtime):
+    c = _guest_client(runtime)
+    assert c.get("/api/v1/demo/guest-pois",
+                 params={"venue_id": 999999}).status_code == 401
+    assert c.get("/api/v1/demo/guest-pois").status_code == 401
+
+
+def test_optional_dependency_with_token_still_works(client, runtime, accounts):
+    c = _guest_client(runtime)
+    subject = TokenSubject(user_id=1, tenant_id=accounts["tid"], roles=["venue_admin"],
+                           venue_id=accounts["vid"])
+    token = issue_tokens(subject)["access_token"]
+    r = c.get("/api/v1/demo/guest-pois",
+              headers={"Authorization": f"Bearer {token}"},
+              params={"venue_id": accounts["vid"]})
+    assert r.status_code == 200 and "venue_admin" in r.json()["roles"]

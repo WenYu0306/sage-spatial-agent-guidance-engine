@@ -82,24 +82,55 @@ class AuthRuntime:
         self.blacklist = blacklist or TokenBlacklist()
         self.policy = policy or LockoutPolicy.from_env()
 
+    def _authed_ctx(self, request: Request,
+                    allowed_roles: tuple[str, ...] = ()) -> AuthContext:
+        """验 token → 验角色 → 交出 AuthContext（dependency/optional 共用路径）。"""
+        header = request.headers.get("authorization", "")
+        if not header.startswith("Bearer "):
+            raise AuthError(401, 1001, "缺少 Bearer 凭证")
+        token = header[len("Bearer "):]
+        try:
+            payload = auth.decode_token(
+                token, expected_type="access", blacklist=self.blacklist)
+        except auth.TokenError as exc:
+            raise AuthError(401, 1001, str(exc)) from exc
+        roles = list(payload.get("roles") or [])
+        if allowed_roles and not set(roles) & set(allowed_roles):
+            ctx = self._context(payload, request)
+            ctx._deny("你没有该操作的权限", "api", None)
+        return self._context(payload, request)
+
     def dependency(self, *allowed_roles: str):
         """FastAPI 依赖工厂：验 token → 验角色 → 交出 AuthContext。"""
 
         def dep(request: Request) -> AuthContext:
-            header = request.headers.get("authorization", "")
-            if not header.startswith("Bearer "):
-                raise AuthError(401, 1001, "缺少 Bearer 凭证")
-            token = header[len("Bearer "):]
-            try:
-                payload = auth.decode_token(
-                    token, expected_type="access", blacklist=self.blacklist)
-            except auth.TokenError as exc:
-                raise AuthError(401, 1001, str(exc)) from exc
-            roles = list(payload.get("roles") or [])
-            if allowed_roles and not set(roles) & set(allowed_roles):
-                ctx = self._context(payload, request)
-                ctx._deny("你没有该操作的权限", "api", None)
-            return self._context(payload, request)
+            return self._authed_ctx(request, allowed_roles)
+
+        return dep
+
+    def optional(self, venue_query_key: str = "venue_id"):
+        """guest 可用依赖（PRD 595"Authorization guest 除外"）：
+        无 token 时以 ?venue_id= 反查匿名身份——租户自 active 场地反查，
+        绝不信任客户端给的 tenant_id；带 token 则走与 dependency() 相同路径。"""
+
+        def dep(request: Request) -> AuthContext:
+            if not request.headers.get("authorization", "").startswith("Bearer "):
+                raw = request.query_params.get(venue_query_key) or ""
+                if not raw.isdigit():
+                    raise AuthError(401, 1001, "缺少 Bearer 凭证（guest 需提供 venue_id）")
+                with psycopg.connect(self.dsn) as conn, conn.cursor() as cur:
+                    cur.execute(
+                        "select id, tenant_id from venues where id=%s and status='active'",
+                        (int(raw),))
+                    row = cur.fetchone()
+                if not row:
+                    raise AuthError(401, 1001, "场地不存在或未开放")
+                return AuthContext(user_id=0, tenant_id=row[1], roles=["guest"],
+                                   venue_id=row[0], merchant_id=None, device_id=None,
+                                   _runtime=self,
+                                   trace_id=request.headers.get("X-Trace-Id"),
+                                   ip=request.client.host if request.client else None)
+            return self._authed_ctx(request)
 
         return dep
 

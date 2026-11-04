@@ -190,7 +190,7 @@ def create_app(dsn: str) -> FastAPI:
                 "version": row[6]}
 
     @app.get("/api/v1/categories")
-    def categories(ctx: AuthContext = Depends(runtime.dependency())):
+    def categories(ctx: AuthContext = Depends(runtime.optional())):
         data = rows(
             "select code, name, parent_code, is_facility, searchable_by_ai "
             "from poi_categories where tenant_id=%s order by sort_order, code",
@@ -201,7 +201,7 @@ def create_app(dsn: str) -> FastAPI:
 
     @app.get("/api/v1/pois")
     def pois(
-        ctx: AuthContext = Depends(runtime.dependency()),
+        ctx: AuthContext = Depends(runtime.optional()),
         venue_id: int | None = None,
         floor_id: int | None = None,
         category_code: str | None = None,
@@ -225,7 +225,9 @@ def create_app(dsn: str) -> FastAPI:
         if category_code:
             where.append("p.category_code=%s")
             params.append(category_code)
-        if status:
+        if "guest" in ctx.roles:
+            where.append("p.status='published'")  # guest 只见已发布（M12）
+        elif status:
             where.append("p.status=%s")
             params.append(status)
         if keyword:
@@ -385,7 +387,7 @@ def create_app(dsn: str) -> FastAPI:
         return {"id": poi_id, "status": target}
 
     @app.get("/api/v1/pois/{poi_id}")
-    def poi_detail(poi_id: int, ctx: AuthContext = Depends(runtime.dependency())):
+    def poi_detail(poi_id: int, ctx: AuthContext = Depends(runtime.optional())):
         row = one(
             "select p.id, p.name, p.intro, p.category_code, p.floor_id, "
             "p.business_hours, p.tags, p.images, p.contact, p.status, "
@@ -396,6 +398,10 @@ def create_app(dsn: str) -> FastAPI:
             from platform_core.auth_router import AuthError
 
             raise AuthError(403, 1003, "POI 不存在或不属于当前租户")
+        if "guest" in ctx.roles and row[9] != "published":
+            from platform_core.auth_router import AuthError
+
+            raise AuthError(403, 1003, "POI 不存在或不属于当前租户")  # guest 仅发布态
         acts = rows(
             "select id, title, act_type, start_at, end_at from activities "
             "where poi_id=%s and tenant_id=%s and status='active' "
@@ -445,7 +451,7 @@ def create_app(dsn: str) -> FastAPI:
         return row
 
     @app.get("/api/v1/activities")
-    def act_list(ctx: AuthContext = Depends(runtime.dependency()),
+    def act_list(ctx: AuthContext = Depends(runtime.optional()),
                  act_type: str | None = None, status: str | None = None,
                  poi_id: int | None = None, title: str | None = None,
                  page: int = Query(1, ge=1), page_size: int = Query(20, ge=1, le=100)):
@@ -553,7 +559,7 @@ def create_app(dsn: str) -> FastAPI:
         return {"id": act_id, "status": target}
 
     @app.get("/api/v1/coupons")
-    def coupon_list(ctx: AuthContext = Depends(runtime.dependency())):
+    def coupon_list(ctx: AuthContext = Depends(runtime.optional())):
         where = ["c.tenant_id=%s", "c.deleted_at is null"]
         params: list = [ctx.tenant_id]
         if ctx.venue_id is not None:
