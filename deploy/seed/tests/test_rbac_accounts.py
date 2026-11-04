@@ -87,7 +87,9 @@ def test_demo_device_row(tid):
         )
         row = cur.fetchone()
         assert row, "设备 screen-f1-01 缺失"
-        assert row[1] == "screen" and row[2] == "offline"
+        assert row[1] == "screen"
+        # status 可能被运行中的大屏心跳合法置为 online（F-19），种子初始为 offline
+        assert row[2] in ("offline", "online")
 
 
 def test_password_verifies_with_seed_env(tid):
