@@ -43,6 +43,17 @@ def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+
+def _emit_event(dsn: str, event: dict) -> None:
+    """埋点失败不阻断问答（M9 SDK 的容错包装）。"""
+    try:
+        from platform_core.events import new_event_id, track
+
+        track(dsn, {**event, "event_id": new_event_id()})
+    except Exception:  # noqa: BLE001  遥测不拖垮主链路
+        pass
+
+
 def create_app(provider=None, checkpointer=None, settings: Settings | None = None) -> FastAPI:
     settings = settings or Settings.from_env()
     prov = provider
@@ -163,6 +174,20 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
                 status, error_code = "error", 3001
                 final = {"answer": "我暂时没有这方面的信息，你可以问问商场服务台（F1 层）。",
                          "cards": [], "citations": [], "degraded": True}
+            _emit_event(settings.database_url, {
+                "tenant_id": tenant_id, "venue_id": venue_id,
+                "event_type": "ai_query" if status != "error" else "ai_query_failed",
+                "actor_type": "guest", "actor_id": req.anonymous_id,
+                "device_id": req.device_id, "session_id": session_id,
+                "trace_id": trace_id,
+                "payload": {
+                    "intent": (final.get("intent") or {}).get("intent"),
+                    "latency_ms": int((time.monotonic() - t0) * 1000),
+                    "degraded": final.get("degraded", False),
+                    "tool_count": len(final.get("tool_results") or {}),
+                    **({"error_code": 3001} if status == "error" else {}),
+                },
+            })
             for piece in re.split(r"(?<=[。！？!?\n])", final.get("answer", "")):
                 if piece.strip():
                     yield _sse("delta", {"text": piece})

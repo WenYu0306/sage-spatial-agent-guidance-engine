@@ -1,7 +1,9 @@
 /** 后台外壳：侧边导航 + 用户信息 + hash 路由分发。 */
 import { useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 import { decodeJwtPayload, profileStore, tokenStore } from "./lib/auth.ts";
+import { setUnauthorizedHandler } from "./lib/api.ts";
 import { navigate, useHashRoute } from "./router.tsx";
 import { Badge, Button, ToastHost } from "./components/ui.tsx";
 import LoginPage from "./pages/Login.tsx";
@@ -29,6 +31,15 @@ const NAV = [
 
 export default function App() {
   const route = useHashRoute();
+  useEffect(() => {
+    // 401 统一登出：清凭证回登录页（五态之"无权限"的落地动作）
+    setUnauthorizedHandler(() => {
+      tokenStore().clear();
+      profileStore().clear();
+      navigate("/login");
+    });
+    return () => setUnauthorizedHandler(() => undefined);
+  }, []);
   const authed = tokenStore().get() !== null;
   // 声明式守卫：未登录一律渲染登录页（不在渲染期改 hash，规避事件时序竞态）
   if (!authed || route === "/login") {

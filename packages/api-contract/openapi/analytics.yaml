@@ -1,0 +1,51 @@
+openapi: 3.1.0
+info:
+  title: M9 埋点与指标（analytics）
+  version: 0.1.0
+  description: guest/device 直报埋点（无登录，event_id 幂等）；指标查询走 M1 bearerAuth。
+paths:
+  /api/v1/events:
+    post:
+      summary: 批量上报埋点（≤50 条，event_id 幂等去重；字典外 event_type 整批 1001）
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [events]
+              properties:
+                events:
+                  type: array
+                  maxItems: 50
+                  items:
+                    type: object
+                    required: [tenant_id, venue_id, event_id, event_type, actor_type, occurred_at]
+                    properties:
+                      event_id: { type: string, maxLength: 64 }
+                      event_type: { type: string, description: "PRD 15 节 11 类字典" }
+                      actor_type: { type: string, enum: [guest, merchant, venue_admin, device] }
+                      occurred_at: { type: string, format: date-time }
+                      payload: { type: object }
+      responses:
+        "200": { description: "{ inserted, skipped, received }" }
+        "422": { description: 超 50 条 }
+  /api/v1/metrics/overview:
+    get:
+      summary: 概览指标（platform_admin/venue_admin/venue_editor）
+      parameters:
+        - { name: date_from, in: query, schema: { type: string, format: date } }
+        - { name: date_to, in: query, schema: { type: string, format: date } }
+      responses:
+        "200": { description: "{ metrics: { ai_query_count, route_plan_count, ... } }" }
+        "401": { description: 1001 }
+  /api/v1/metrics/{code}:
+    get:
+      summary: 单指标时序（11 个 metric_code；day|hour 粒度；Top 榜型返回 label 列表）
+      responses:
+        "200": { description: "{ points: [...] }" }
+  /api/v1/metrics/merchant/{poi_id}:
+    get:
+      summary: 商户引流（被搜索/被推荐/导航到店/领券；仅自己门店）
+      responses:
+        "200": { description: "{ poi_id, searched, recommended, navigated, coupon_claimed }" }
+        "403": { description: 1003 越权他店 }

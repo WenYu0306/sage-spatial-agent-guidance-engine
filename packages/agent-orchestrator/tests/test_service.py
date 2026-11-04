@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 
 import httpx
 import psycopg
@@ -75,6 +76,28 @@ def test_sse_event_sequence(client):
     done_line = [ln for ln in text.splitlines() if ln.startswith("data: ") and "status" in ln][-1]
     assert '"status": "ok"' in done_line or '"status":"ok"' in done_line
     assert "voice_channel" not in text  # 冻结字段只在协议文档，SSE 不发
+
+
+def test_chat_emits_ai_query_event(client):
+    """M9 打点：问答完成后写 ai_query 事件（含 intent/latency/degraded/tool_count）。"""
+    vid, dsn = _venue_ids()
+    marker = f"evt-test-{uuid.uuid4().hex[:8]}"
+    with client.stream(
+        "POST", "/api/v1/agent/chat",
+        json={"venue_id": vid, "message": "我想吃火锅", "context": {"event_id_marker": marker}},
+    ) as resp:
+        assert resp.status_code == 200
+        text = "".join(chunk for chunk in resp.iter_text())
+    meta = [ln for ln in text.splitlines() if ln.startswith("data: ")][0]
+    session_id = json.loads(meta[6:])["session_id"]
+    with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            "select payload from events where event_type='ai_query' and session_id=%s "
+            "order by id desc limit 1", (session_id,))
+        row = cur.fetchone()
+    assert row, "问答完成应写 ai_query 事件"
+    payload = row[0]
+    assert {"intent", "latency_ms", "degraded", "tool_count"} <= set(payload)
 
 
 def test_message_length_422(client):
