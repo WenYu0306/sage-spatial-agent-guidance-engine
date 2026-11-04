@@ -62,6 +62,6 @@ floors:
     sort_order: 2
 
 map_layers:
-  B1: {svg_url: /static/maps/b1_placeholder.svg, width: 1200, height: 800, scale_meter: 0.15}
-  F1: {svg_url: /static/maps/f1_placeholder.svg, width: 1200, height: 800, scale_meter: 0.15}
-  F2: {svg_url: /static/maps/f2_placeholder.svg, width: 1200, height: 800, scale_meter: 0.15}
+  B1: {svg_url: /static/maps/b1.svg, width: 1200, height: 800, scale_meter: 0.15}
+  F1: {svg_url: /static/maps/f1.svg, width: 1200, height: 800, scale_meter: 0.15}
+  F2: {svg_url: /static/maps/f2.svg, width: 1200, height: 800, scale_meter: 0.15}

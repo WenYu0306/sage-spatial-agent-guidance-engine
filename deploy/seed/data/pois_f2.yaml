@@ -1,27 +1,28 @@
-# F2 层店铺（餐饮集中层 + 影院 + 亲子教育，24 家，全部虚构）。影院占东北角。
+# F2 层店铺（餐饮集中层 + 影院 + 亲子教育，24 家，全部虚构）。
+# 影院占东北角锚店位（大区块），南排为亲子/教育带。
 floor: F2
 pois:
-  - {name: 云雀灶火锅, category: hotpot, x: 150, y: 180, hours: "10:30-21:30", tags: [火锅, 聚餐, 辣], hot: 85, weight: 1.10}
-  - {name: 石浪火锅, category: hotpot, x: 430, y: 180, hours: "10:30-21:30", tags: [火锅, 聚餐], hot: 78}
-  - {name: 松风中餐厅, category: chinese, x: 570, y: 180, hours: "10:30-21:00", tags: [中餐, 包间, 聚餐], hot: 76}
-  - {name: 白桦西餐, category: western, x: 710, y: 180, hours: "11:00-21:30", tags: [西餐, 约会, 晚餐], hot: 79}
-  - {name: 三时日料, category: japanese, x: 850, y: 180, hours: "11:00-21:30", tags: [日料, 寿司, 约会], hot: 77}
-  - {name: 麦穗面包坊, category: bakery, x: 990, y: 180, hours: "09:00-21:30", tags: [烘焙, 甜品], hot: 68}
-  - {name: 巨幕星云影院, category: cinema, x: 1050, y: 130, hours: "10:30-22:30", tags: [影院, 约会, 亲子], hot: 88, weight: 1.15}
-  - {name: 栖枝咖啡, category: coffee_tea, x: 150, y: 300, hours: "10:00-21:30", tags: [咖啡, 安静, 约会], hot: 77}
-  - {name: 屿里咖啡, category: coffee_tea, x: 1050, y: 300, hours: "10:00-21:30", tags: [咖啡, 甜品, 拍照], hot: 73}
-  - {name: 松间食堂, category: chinese, x: 150, y: 560, hours: "10:30-21:00", tags: [中餐, 聚餐], hot: 70}
-  - {name: 六婶私房菜, category: chinese, x: 290, y: 560, hours: "10:30-21:00", tags: [私房菜, 聚餐], hot: 72}
-  - {name: 一麦堂面馆, category: fastfood, x: 430, y: 560, hours: "10:00-21:00", tags: [面食, 快餐], hot: 65}
-  - {name: 灶门炭火锅, category: hotpot, x: 570, y: 560, hours: "10:30-21:30", tags: [火锅, 聚餐, 辣], hot: 74}
-  - {name: 潮汐健身, category: gym, x: 710, y: 560, hours: "08:00-22:00", tags: [健身, 运动课程], hot: 69}
-  - {name: 云上乐园, category: kids_play, x: 850, y: 560, hours: "10:00-21:00", tags: [亲子, 游乐], hot: 81, weight: 1.05}
-  - {name: 知了研学, category: education, x: 990, y: 560, hours: "09:30-20:00", tags: [研学, 亲子], hot: 63}
-  - {name: 屿声音乐教室, category: education, x: 150, y: 700, hours: "09:30-20:00", tags: [音乐, 培训, 亲子], hot: 58}
-  - {name: 星沙玩具屋, category: toys_books, x: 290, y: 700, hours: "10:00-21:30", tags: [玩具, 亲子], hot: 64}
-  - {name: 白鲸亲子理发, category: salon, x: 430, y: 700, hours: "10:00-20:30", tags: [亲子理发, 美发], hot: 56}
-  - {name: 沙洲小馆, category: western, x: 570, y: 700, hours: "11:00-21:00", tags: [西餐, 轻食, 约会], hot: 61}
-  - {name: 溪亭咖啡, category: coffee_tea, x: 710, y: 700, hours: "10:00-21:30", tags: [咖啡, 安静, 自习], hot: 71}
-  - {name: 小行星科学馆, category: education, x: 850, y: 700, hours: "09:30-20:00", tags: [科学, 亲子, 研学], hot: 67}
-  - {name: 知更鸟驿站, category: life_service, x: 1050, y: 700, hours: "09:00-21:00", tags: [快递, 代收], hot: 50}
-  - {name: 半麦烘焙工作室, category: bakery, x: 1050, y: 180, hours: "10:00-20:30", tags: [烘焙, DIY, 甜品], hot: 62}
+  - {name: 云雀灶火锅, category: hotpot, x: 215, y: 170, hours: "10:30-21:30", tags: [火锅, 聚餐, 辣], hot: 85, weight: 1.10}
+  - {name: 石浪火锅, category: hotpot, x: 350, y: 170, hours: "10:30-21:30", tags: [火锅, 聚餐], hot: 78}
+  - {name: 松风中餐厅, category: chinese, x: 485, y: 170, hours: "10:30-21:00", tags: [中餐, 包间, 聚餐], hot: 76}
+  - {name: 白桦西餐, category: western, x: 775, y: 170, hours: "11:00-21:30", tags: [西餐, 约会, 晚餐], hot: 79}
+  - {name: 三时日料, category: japanese, x: 905, y: 170, hours: "11:00-21:30", tags: [日料, 寿司, 约会], hot: 77}
+  - {name: 麦穗面包坊, category: bakery, x: 1030, y: 170, hours: "09:00-21:30", tags: [烘焙, 甜品], hot: 68}
+  - {name: 巨幕星云影院, category: cinema, x: 1065, y: 110, hours: "10:30-22:30", tags: [影院, 约会, 亲子], hot: 88, weight: 1.15}
+  - {name: 栖枝咖啡, category: coffee_tea, x: 230, y: 330, hours: "10:00-21:30", tags: [咖啡, 安静, 约会], hot: 77}
+  - {name: 溪亭咖啡, category: coffee_tea, x: 345, y: 330, hours: "10:00-21:30", tags: [咖啡, 安静, 自习], hot: 71}
+  - {name: 屿里咖啡, category: coffee_tea, x: 975, y: 330, hours: "10:00-21:30", tags: [咖啡, 甜品, 拍照], hot: 73}
+  - {name: 松间食堂, category: chinese, x: 230, y: 490, hours: "10:30-21:00", tags: [中餐, 聚餐], hot: 70}
+  - {name: 六婶私房菜, category: chinese, x: 345, y: 490, hours: "10:30-21:00", tags: [私房菜, 聚餐], hot: 72}
+  - {name: 一麦堂面馆, category: fastfood, x: 760, y: 490, hours: "10:00-21:00", tags: [面食, 快餐], hot: 65}
+  - {name: 灶门炭火锅, category: hotpot, x: 870, y: 490, hours: "10:30-21:30", tags: [火锅, 聚餐, 辣], hot: 74}
+  - {name: 潮汐健身, category: gym, x: 975, y: 490, hours: "08:00-22:00", tags: [健身, 运动课程], hot: 69}
+  - {name: 云上乐园, category: kids_play, x: 215, y: 680, hours: "10:00-21:00", tags: [亲子, 游乐], hot: 81, weight: 1.05}
+  - {name: 知了研学, category: education, x: 350, y: 680, hours: "09:30-20:00", tags: [研学, 亲子], hot: 63}
+  - {name: 屿声音乐教室, category: education, x: 485, y: 680, hours: "09:30-20:00", tags: [音乐, 培训, 亲子], hot: 58}
+  - {name: 星沙玩具屋, category: toys_books, x: 620, y: 680, hours: "10:00-21:30", tags: [玩具, 亲子], hot: 64}
+  - {name: 白鲸亲子理发, category: salon, x: 755, y: 680, hours: "10:00-20:30", tags: [亲子理发, 美发], hot: 56}
+  - {name: 沙洲小馆, category: western, x: 890, y: 680, hours: "11:00-21:00", tags: [西餐, 轻食, 约会], hot: 61}
+  - {name: 小行星科学馆, category: education, x: 1025, y: 680, hours: "09:30-20:00", tags: [科学, 亲子, 研学], hot: 67}
+  - {name: 知更鸟驿站, category: life_service, x: 1115, y: 680, hours: "09:00-21:00", tags: [快递, 代收], hot: 50}
+  - {name: 半麦烘焙工作室, category: bakery, x: 1115, y: 330, hours: "10:00-20:30", tags: [烘焙, DIY, 甜品], hot: 62}
