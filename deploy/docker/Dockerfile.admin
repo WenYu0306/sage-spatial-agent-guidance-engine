@@ -3,12 +3,14 @@
 ARG REGISTRY=
 FROM ${REGISTRY}node:22-alpine AS build
 ARG REGISTRY
-RUN corepack enable && npm i -g pnpm@11
+# 国内服务器：npm/pnpm 走 npmmirror（D-026 同理）
+RUN npm config set registry https://registry.npmmirror.com && npm i -g pnpm@11 --registry=https://registry.npmmirror.com
 WORKDIR /repo
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc* ./
 COPY packages/admin-web/package.json packages/admin-web/
 COPY packages/map-render/package.json packages/map-render/
-RUN pnpm install --frozen-lockfile
+# esbuild 平台二进制经 optionalDependencies 安装，postinstall 可跳过（pnpm11 非交互批准兼容问题）
+RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY packages/admin-web packages/admin-web
 COPY packages/map-render packages/map-render
 RUN pnpm --filter @sage/admin-web build

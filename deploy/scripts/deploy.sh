@@ -4,12 +4,21 @@
 # 说明（PRD 7.5 偏差，见 D-026）：无镜像仓库，"拉镜像"以"git pull + 本机构建"实现。
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
-SHA=$(git rev-parse --short HEAD)
-echo "== [1/7] 拉取代码（$BRANCH @ $SHA）=="
-git pull --ff-only origin "$BRANCH"
+if [ -d .git ]; then
+  BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  SHA=$(git rev-parse --short HEAD)
+  echo "== [1/7] 拉取代码（$BRANCH @ $SHA）=="
+  git pull --ff-only origin "$BRANCH"
+else
+  SHA="rsync-$(date +%H%M)"
+  echo "== [1/7] 代码就绪（rsync 同步模式：无 .git，跳过 pull——D-026，快照 $SHA）=="
+fi
 echo "== [2/7] 构建镜像 =="
-docker compose -f deploy/compose.demo.yml build
+if [ "${SKIP_BUILD:-0}" = "1" ]; then
+  echo "（SHIP 模式：镜像已由本机构建并载入，跳过构建——D-026）"
+else
+  docker compose -f deploy/compose.demo.yml build
+fi
 echo "== [3/7] 起基础设施（postgres/redis）=="
 docker compose -f deploy/compose.demo.yml up -d postgres redis
 docker compose -f deploy/compose.demo.yml wait postgres redis
