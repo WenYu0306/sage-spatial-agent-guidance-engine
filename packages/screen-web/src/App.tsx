@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { KioskShell, LoadError, Spinner } from "./components/ui.tsx";
 import { Chat } from "./pages/Chat.tsx";
 import { Home } from "./pages/Home.tsx";
+import { RoutePage } from "./pages/RoutePage.tsx";
 import {
   deviceLogin,
   invalidateToken,
@@ -22,6 +23,13 @@ export function App() {
   const [route, setRoute] = useState<KioskRoute>("home");
   const [chatSeed, setChatSeed] = useState("");
   const [routePayload, setRoutePayload] = useState<RoutePayload | null>(null);
+  const [a11y, setA11y] = useState(() => {
+    try {
+      return localStorage.getItem("sage_screen_a11y") === "1";
+    } catch {
+      return false;
+    }
+  });
   const lastActive = useRef(Date.now());
 
   const boot = useCallback(() => {
@@ -61,6 +69,17 @@ export function App() {
       clearInterval(timer);
     };
   }, [config]);
+
+  useEffect(() => {
+    document.documentElement.style.fontSize = a11y ? "125%" : "100%";
+    if (a11y) document.documentElement.dataset.contrast = "high";
+    else delete document.documentElement.dataset.contrast;
+    try {
+      localStorage.setItem("sage_screen_a11y", a11y ? "1" : "0");
+    } catch {
+      /* 存储不可用时仅本次会话生效 */
+    }
+  }, [a11y]);
 
   const go = useCallback(
     (action: KioskAction, seed = "") => {
@@ -107,30 +126,15 @@ export function App() {
               onRoute={(p) => { setRoutePayload(p); go("route"); }} />
       )}
       {route === "route" && (
-        <KioskShell>
-          <button onClick={() => go("home")}
-            className="self-start rounded-lg bg-slate-800 px-6 py-2 text-xl">
-            ← 返回首页
-          </button>
-          {routePayload ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-4">
-              <div className="text-4xl font-semibold">
-                {routePayload.start_label} → {routePayload.goal_label}
-              </div>
-              <div className="text-2xl text-slate-400">
-                {routePayload.summary.distance_meter} 米 · 约
-                {Math.round(routePayload.summary.eta_seconds)} 秒 · 途经
-                {routePayload.summary.floors.join(" → ")} 层
-              </div>
-              <div className="text-xl text-slate-500">地图绘制与扫码接力（④ 提交实现）</div>
-            </div>
-          ) : (
-            <div className="flex flex-1 items-center justify-center text-2xl text-slate-500">
-              请先在问答中生成路线
-            </div>
-          )}
-        </KioskShell>
+        <RoutePage session={session} payload={routePayload!} onBack={() => go("home")} />
       )}
+      <button
+        onClick={() => setA11y((v) => !v)}
+        title="无障碍模式：放大字号并提高对比度"
+        className={`fixed bottom-5 right-5 z-40 rounded-full px-6 py-3 text-xl shadow-xl
+                    ${a11y ? "bg-amber-500 text-slate-900" : "bg-slate-800/90 text-slate-300"}`}>
+        ♿ 无障碍{a11y ? "开" : "关"}
+      </button>
     </>
   );
 }

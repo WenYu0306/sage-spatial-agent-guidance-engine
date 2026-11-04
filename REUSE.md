@@ -31,6 +31,7 @@
 | uvicorn | >=0.54 | BSD-3-Clause | ASGI 服务器 | hypercorn | fastapi 官方推荐组合 |
 | httpx | >=0.28 | BSD-3-Clause | 模块间 HTTP 客户端（M5 工具层调兄弟模块服务）+ FastAPI TestClient 依赖 | requests | starlette TestClient 官方依赖；async 友好 |
 | PyJWT | 2.15 | MIT | M1 认证：access/refresh token 签发与验证（HS256，PRD 9 安全表） | python-jose（维护活跃度下滑）、authlib（含 OAuth，超出需求） | API 最小（encode/decode 两个函数），持续维护，主动警告弱密钥长度 |
+| qrcode (npm) | ^8 | MIT | M11 大屏「发到手机」二维码生成（扫码落地 M12 /m/route/{id}） | 自绘 QR 编码器（不现实）、qr-server（引入服务端依赖） | 纯前端生成零服务依赖，持续维护，仅 1 个运行时依赖 |
 | redis-py | 8.1 | MIT | token 登出黑名单（SETNX+TTL 自动过期，PRD 9：Redis 或数据库表） | 数据库表（需新迁移与清理任务） | Redis 7 已在技术栈内，黑名单仅 5 行调用；内存后端为单进程 demo 降级 |
 
 ## 待引入（后续任务按流程调研后登记）

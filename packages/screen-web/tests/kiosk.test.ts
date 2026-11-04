@@ -64,3 +64,24 @@ test("createSSEParser：跨 chunk 事件帧与多 data 行", async () => {
     ["delta", '{"text": "你好"}'],
   ]);
 });
+
+test("toRouteData：M5 载荷适配 routeDraw 结构", async () => {
+  const { toRouteData } = await import("../src/lib/route.ts");
+  const data = toRouteData({
+    route_id: 9, venue_id: 1, start_label: "起点", goal_label: "终点",
+    summary: { distance_meter: 52.97, eta_seconds: 100, floors: ["F1", "B1"], transfers: [] },
+    nodes: { "5": { label: "走廊点", floor: "F1", x: 600, y: 260 },
+             "7": { label: "B1 卫生间", floor: "B1", x: 730, y: 410 } },
+    segments: [{ from_id: 5, to_id: 7, edge_type: "walk",
+                 distance_meter: 52.97, time_s: 83.3 }],
+  });
+  assert.equal(data.nodes[5].x, 600);
+  assert.equal(data.segments[0].from, 5);
+  assert.equal(data.total_distance_meter, 52.97);
+});
+
+test("qrTarget：接力落地页地址（去尾斜杠）", async () => {
+  const { qrTarget } = await import("../src/lib/route.ts");
+  assert.equal(qrTarget(301, "http://localhost:5193/"),
+               "http://localhost:5193/m/route/301");
+});

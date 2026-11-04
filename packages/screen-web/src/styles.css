@@ -8,3 +8,15 @@ html, body, #root {
   color: #e2e8f0;
   font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
+
+/* 无障碍：高对比覆盖（字号缩放走 html font-size，Tailwind rem 全局放大） */
+[data-contrast="high"] .text-slate-400,
+[data-contrast="high"] .text-slate-500 {
+  color: #e2e8f0 !important;
+}
+[data-contrast="high"] .bg-slate-800\/70,
+[data-contrast="high"] .bg-slate-800\/80,
+[data-contrast="high"] .bg-slate-900\/80,
+[data-contrast="high"] .bg-slate-900\/70 {
+  background-color: #1e293b !important;
+}
