@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# M13 demo 部署：拉码 → 构建镜像 → 起基础设施 → 迁移(幂等) → 起服务 → 健康检查 → 灌数据 → 输出地址。
+# 用法：在服务器仓库根执行  bash deploy/scripts/deploy.sh
+# 说明（PRD 7.5 偏差，见 D-026）：无镜像仓库，"拉镜像"以"git pull + 本机构建"实现。
+set -euo pipefail
+cd "$(dirname "$0")/../.."
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+SHA=$(git rev-parse --short HEAD)
+echo "== [1/7] 拉取代码（$BRANCH @ $SHA）=="
+git pull --ff-only origin "$BRANCH"
+echo "== [2/7] 构建镜像 =="
+docker compose -f deploy/compose.demo.yml build
+echo "== [3/7] 起基础设施（postgres/redis）=="
+docker compose -f deploy/compose.demo.yml up -d postgres redis
+docker compose -f deploy/compose.demo.yml wait postgres redis
+echo "== [4/7] 数据库迁移（幂等）=="
+docker compose -f deploy/compose.demo.yml run --rm migrate
+echo "== [5/7] 起全部服务 =="
+docker compose -f deploy/compose.demo.yml up -d
+echo "== [6/7] 健康检查 =="
+bash deploy/scripts/healthcheck.sh
+echo "== [7/7] 灌 demo 数据（seed 幂等 + ingest 知识向量）=="
+docker compose -f deploy/compose.demo.yml run --rm seed
+docker compose -f deploy/compose.demo.yml run --rm ingest
+echo "== 部署完成 =="
+echo "公网地址：https://sage.westwardecho.com/admin/"
+echo "本机直连：http://127.0.0.1:8080/admin/（服务器上）"
+docker compose -f deploy/compose.demo.yml ps

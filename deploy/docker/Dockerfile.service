@@ -1,0 +1,23 @@
+# SAGE 后端通用多阶段构建（ARG SERVICE 决定 uvicorn 目标；六服务共用一份镜像定义）。
+# 构建上下文 = 仓库根。REGISTRY 支持国内镜像源前缀（服务器拉取用），默认走官方源。
+# 对 PRD 16"每服务一个 Dockerfile"的偏离记录于 D-026：单镜像多命令（2C4G 单机省 6 份构建）。
+# syntax=docker/dockerfile:1
+ARG REGISTRY=
+FROM ${REGISTRY}python:3.12-slim AS builder
+ARG UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
+ENV UV_DEFAULT_INDEX=$UV_INDEX_URL UV_COMPILE_BYTECODE=1
+WORKDIR /app
+RUN pip install --no-cache-dir uv
+COPY pyproject.toml uv.lock ./
+COPY packages/ packages/
+RUN uv sync --frozen --no-install-project
+
+FROM ${REGISTRY}python:3.12-slim AS runtime
+ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
+RUN useradd --create-home --shell /usr/sbin/nologin sage
+WORKDIR /app
+COPY --from=builder --chown=sage:sage /app /app
+USER sage
+EXPOSE 8941 8942 8943 8944 8945 8946
+# 命令由 compose 注入：uvicorn <module> --host 0.0.0.0 --port <p>
+CMD ["uvicorn", "content_service.app:make_app", "--factory", "--host", "0.0.0.0", "--port", "8945"]

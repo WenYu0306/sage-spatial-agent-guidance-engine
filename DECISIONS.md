@@ -26,3 +26,5 @@
 - 2026-11-04 D-021 merchant 标识语义（V1 无商户表）：user_roles.merchant_id=商户锚点门店 poi_id，pois.merchant_id 同值回填，商户数据过滤以此为键；商户多门店/独立商户实体留 V2。
 - 2026-11-04 D-023 M10 admin-web：自绘 shadcn 风格复制式组件（无 radix 运行时依赖，引全套留 V2）；hash 路由自写不引 router 框架（12 页内最小陌生面）；登录守卫必须声明式（渲染期改 location.hash 会因 hashchange 事件早于 useEffect 挂载而卡死路由）。
 - 2026-11-04 D-024 仓库公开（GitHub，作品集用途）+ PolyForm Noncommercial 1.0.0（商用受限，负责人指定）；uv.lock/pnpm-lock 起入库（部署可复现构建）；公开前已审计：git 历史无密钥、.env 未跟踪。
+- 2026-11-04 D-025 M9 指标读路径即时聚合 events（demo 数据量小）；metrics_daily 0008 已建表，预聚合定时任务留 V2。
+- 2026-11-04 D-026 M13 部署偏离（PRD 16/7.5）：①六后端共用一份多阶段镜像（ARG SERVICE 由 compose 注入命令，2C4G 单机省 6 份构建与磁盘）；②无镜像仓库，deploy.sh 以"git pull + 本机构建"实现"拉镜像"语义；③国内服务器镜像源走 docker.m.daocloud.io 前缀 + 清华 PyPI（ARG REGISTRY/UV_INDEX_URL 可换）；④唯一对外口 nginx:8080 绑 127.0.0.1，HTTPS 由宿主既有 caddy 反代 sage.westwardecho.com 自动签发（服务器另有 forge/westward/analyze 三个作品集项目共存，端口/内存预算见 compose 注释）。

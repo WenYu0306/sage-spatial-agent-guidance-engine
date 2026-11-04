@@ -1,0 +1,161 @@
+# M13 demo 编排：全部服务走 compose 内网，唯一对外口是 nginx 绑 127.0.0.1:8080，
+# 外网统一经宿主 caddy 反代 sage.westwardecho.com（自动 HTTPS）。
+# 内存预算（D-026，2C4G 共存机）：postgres 400m + redis 64m + 六后端各 180m + nginx 32m ≈ 1.6G。
+name: sage
+
+x-frontend: &frontend
+  &frontend-defaults
+  restart: unless-stopped
+  env_file: ../.env.demo
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  build:
+    context: ..
+    dockerfile: deploy/docker/Dockerfile.service
+    args: &build-args
+      REGISTRY: ${REGISTRY:-docker.m.daocloud.io/}
+      UV_INDEX_URL: ${UV_INDEX_URL:-https://pypi.tuna.tsinghua.edu.cn/simple}
+  image: sage-backend:${SAGE_TAG:-latest}
+
+services:
+  postgres:
+    image: ${REGISTRY:-docker.m.daocloud.io/}pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sage}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sage_demo_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-sage}
+    command: postgres -c shared_buffers=128MB -c max_connections=60
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sage}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    mem_limit: 400m
+
+  redis:
+    image: ${REGISTRY:-docker.m.daocloud.io/}library/redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --maxmemory 48mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    mem_limit: 64m
+
+  content:
+    <<: *frontend-defaults
+    command: uvicorn content_service.app:make_app --factory --host 0.0.0.0 --port 8945
+    healthcheck: &hc
+      test: ["CMD", "python", "-c", "import urllib.request as u;u.urlopen('http://127.0.0.1:8945/health',timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 9
+    mem_limit: 180m
+
+  route-engine:
+    <<: *frontend-defaults
+    command: uvicorn route_engine.app:app --host 0.0.0.0 --port 8942
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "python", "-c", "import urllib.request as u;u.urlopen('http://127.0.0.1:8942/health',timeout=2)"]
+    mem_limit: 180m
+
+  knowledge-rag:
+    <<: *frontend-defaults
+    command: uvicorn knowledge_rag.app:app --host 0.0.0.0 --port 8943
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "python", "-c", "import urllib.request as u;u.urlopen('http://127.0.0.1:8943/health',timeout=2)"]
+    mem_limit: 180m
+
+  recommender:
+    <<: *frontend-defaults
+    command: uvicorn recommender.app:make_app --factory --host 0.0.0.0 --port 8944
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "python", "-c", "import urllib.request as u;u.urlopen('http://127.0.0.1:8944/health',timeout=2)"]
+    mem_limit: 180m
+
+  analytics:
+    <<: *frontend-defaults
+    command: uvicorn analytics_service.app:make_app --factory --host 0.0.0.0 --port 8946
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "python", "-c", "import urllib.request as u;u.urlopen('http://127.0.0.1:8946/health',timeout=2)"]
+    mem_limit: 180m
+
+  agent:
+    <<: *frontend-defaults
+    command: uvicorn agent_orchestrator.app:app --host 0.0.0.0 --port 8941
+    environment:
+      DATABASE_URL: postgresql+psycopg://sage:sage_demo_pw@postgres:5432/sage
+      REDIS_URL: redis://redis:6379/0
+      SVC_ROUTE_ENGINE: http://route-engine:8942
+      SVC_KNOWLEDGE_RAG: http://knowledge-rag:8943
+      SVC_RECOMMENDER: http://recommender:8944
+      LLM_BASE_URL: ${LLM_BASE_URL}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_MODEL: ${LLM_MODEL}
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL}
+      JWT_SECRET: ${JWT_SECRET}
+      SEED_DEMO_ADMIN_PASSWORD: ${SEED_DEMO_ADMIN_PASSWORD}
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "python", "-c", "import urllib.request as u;u.urlopen('http://127.0.0.1:8941/health',timeout=2)"]
+    mem_limit: 220m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      route-engine:
+        condition: service_healthy
+      knowledge-rag:
+        condition: service_healthy
+      recommender:
+        condition: service_healthy
+
+  nginx:
+    build:
+      context: ..
+      dockerfile: deploy/docker/Dockerfile.admin
+      args:
+        REGISTRY: ${REGISTRY:-docker.m.daocloud.io/}
+    image: sage-nginx:${SAGE_TAG:-latest}
+    restart: unless-stopped
+    ports: ["127.0.0.1:8080:80"]
+    mem_limit: 32m
+    depends_on:
+      - content
+      - agent
+      - analytics
+      - recommender
+
+  migrate:
+    <<: *frontend-defaults
+    command: alembic -c deploy/migrations/alembic.ini upgrade head
+    restart: "no"
+    profiles: [ops]
+
+  seed:
+    <<: *frontend-defaults
+    command: python deploy/seed/seed.py
+    restart: "no"
+    profiles: [ops]
+
+  ingest:
+    <<: *frontend-defaults
+    command: python -m knowledge_rag.ingest
+    restart: "no"
+    profiles: [ops]
+
+volumes:
+  pgdata:

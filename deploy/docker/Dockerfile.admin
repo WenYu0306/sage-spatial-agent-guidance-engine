@@ -1,0 +1,19 @@
+# admin-web 多阶段：node 构建 → nginx 运行（静态 + 反代）。构建上下文 = 仓库根。
+# syntax=docker/dockerfile:1
+ARG REGISTRY=
+FROM ${REGISTRY}node:22-alpine AS build
+ARG REGISTRY
+RUN corepack enable && npm i -g pnpm@11
+WORKDIR /repo
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc* ./
+COPY packages/admin-web/package.json packages/admin-web/
+COPY packages/map-render/package.json packages/map-render/
+RUN pnpm install --frozen-lockfile
+COPY packages/admin-web packages/admin-web
+COPY packages/map-render packages/map-render
+RUN pnpm --filter @sage/admin-web build
+
+FROM ${REGISTRY}nginx:1.27-alpine AS runtime
+COPY deploy/nginx/admin.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /repo/packages/admin-web/dist /usr/share/nginx/html/admin
+EXPOSE 80
