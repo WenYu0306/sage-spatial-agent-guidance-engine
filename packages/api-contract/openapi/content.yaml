@@ -63,3 +63,28 @@ paths:
       responses:
         "200": { description: "{ id, version }" }
         "403": { description: 1003 merchant 无权 }
+  /api/v1/devices/me:
+    get:
+      summary: 设备身份自读（device 角色；场地名/营业时间/楼层/坐标随 token device_id 取）
+      responses:
+        "200": { description: "{ data: {device_id, code, name, venue_id, status, app_version, last_seen_at, venue_name, business_hours, floor_id, floor_name, position_x, position_y} }" }
+        "403": { description: 1003 非 device 角色 }
+        "404": { description: 设备未登记（devices.code 须与用户名一致） }
+  /api/v1/devices/{device_id}/heartbeat:
+    post:
+      summary: 设备心跳（F-19/PRD 7.4，device 角色；整行更新天然幂等）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string, enum: [online, offline, maintenance], default: online }
+                app_version: { type: string, maxLength: 32 }
+      responses:
+        "200": { description: "{ data: {device_id, status, app_version} }；打点 device_active" }
+        "401": { description: 1001 缺凭证 }
+        "403": { description: 1003 非 device 角色 }
+        "404": { description: 设备不存在或不属于该场地（跨场地隔离） }
+        "422": { description: status 非枚举值 }

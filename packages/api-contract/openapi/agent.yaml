@@ -1,0 +1,80 @@
+openapi: 3.1.0
+info:
+  title: M5 Agent 编排（agent）
+  version: 0.1.0
+paths:
+  /api/v1/agent/chat:
+    post:
+      summary: 顾客问答（SSE 流式，PRD 7.1）
+      description: >
+        事件序列 meta → delta* → card* → citations? → route? → done。
+        route 事件在 route.plan 成功时出现，路线结果缓存 30 分钟（PRD 872）。
+        请求头必带 X-Client（admin/screen/mobile）与 X-Device-Id（大屏必填）；
+        guest 可匿名（anonymous_id 标识）。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [venue_id, message]
+              properties:
+                session_id: { type: integer, nullable: true, description: 为空则新建会话并回传 }
+                venue_id: { type: integer }
+                device_id: { type: integer, nullable: true, description: 大屏必填，须属于该 venue }
+                floor_id: { type: integer, nullable: true, description: 用户当前楼层（路径起点） }
+                message: { type: string, minLength: 1, maxLength: 500 }
+                anonymous_id: { type: string, maxLength: 64 }
+                context:
+                  type: object
+                  properties:
+                    position_x: { type: number }
+                    position_y: { type: number }
+                    prefer_accessible: { type: boolean }
+      responses:
+        "200":
+          description: text/event-stream
+          content:
+            text/event-stream:
+              schema:
+                description: |
+                  event: meta  data: {session_id, message_id, trace_id}
+                  event: delta data: {text}
+                  event: card  data: {type: poi_list, items: [{poi_id, name, floor, distance_meter, eta_seconds, reasons, coupon}]}
+                  event: citations data: {items: [{doc_id, title, quote}]}
+                  event: route data: RoutePayload（见 GET /api/v1/route/{route_id}，含 route_id/summary/nodes/segments）
+                  event: done  data: {status: ok|degraded|error, latency_ms, degraded, error_code?}
+        "422":
+          description: 消息超长（PRD 7.1 校验）
+  /api/v1/agent/sessions/{session_id}/trace:
+    get:
+      summary: 会话工具链 trace（时间线视图数据源）
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: 按 message_id + step_index 排序的 trace 步骤
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  steps:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        message_id: { type: integer }
+                        trace_id: { type: string }
+                        step_index: { type: integer }
+                        step_type: { type: string, description: intent_parse|tool_call|generate }
+                        tool_code: { type: string, nullable: true }
+                        input: { type: object, additionalProperties: true }
+                        output: { type: object, additionalProperties: true }
+                        status: { type: string }
+                        latency_ms: { type: integer }
+                        error_code: { type: integer, nullable: true }

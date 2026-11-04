@@ -1,0 +1,116 @@
+openapi: 3.1.0
+info:
+  title: M3 路径引擎 + M5 路线缓存（route）
+  version: 0.1.0
+paths:
+  /route/plan:
+    post:
+      summary: 路线规划（M3 引擎内部端点，8942；业务错误以 HTTP 200 + error_code 返回）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_code, venue_name, start_node_id, goal_node_id]
+              properties:
+                tenant_code: { type: string }
+                venue_name: { type: string }
+                start_node_id: { type: integer }
+                goal_node_id: { type: integer }
+                accessible_only: { type: boolean, description: 无障碍模式剔除扶梯/楼梯 }
+      responses:
+        "200":
+          description: RouteResult（业务失败时含 error_code 2003 不可达 / 2004 路网未构建）
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error_code: { type: integer, nullable: true }
+                  node_path: { type: array, items: { type: integer } }
+                  total_distance_meter: { type: number }
+                  total_time_s: { type: number }
+                  nodes:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        label: { type: string }
+                        floor: { type: string }
+                        x: { type: number }
+                        y: { type: number }
+                  segments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        from_id: { type: integer }
+                        to_id: { type: integer }
+                        edge_type: { type: string, description: walk|elevator|escalator|stairs }
+                        distance_meter: { type: number }
+                        time_s: { type: number }
+  /api/v1/route/{route_id}:
+    get:
+      summary: 按缓存取路线（M5，手机扫码接力 F-11/PRD 690；guest 可访问）
+      description: 缓存 TTL 30 分钟（PRD 872）；过期或不存在返回 404 + error_code 2005。
+      parameters:
+        - name: route_id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: "与 chat 的 event: route 同构"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  route_id: { type: integer }
+                  venue_id: { type: integer }
+                  start_label: { type: string, nullable: true }
+                  goal_label: { type: string, nullable: true }
+                  summary:
+                    type: object
+                    properties:
+                      distance_meter: { type: number }
+                      eta_seconds: { type: number }
+                      floors: { type: array, items: { type: string } }
+                      transfers:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            type: { type: string }
+                            from: { type: string, nullable: true }
+                            to: { type: string, nullable: true }
+                  nodes:
+                    type: object
+                    additionalProperties:
+                      type: object
+                      properties:
+                        label: { type: string }
+                        floor: { type: string }
+                        x: { type: number }
+                        y: { type: number }
+                  segments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        from_id: { type: integer }
+                        to_id: { type: integer }
+                        edge_type: { type: string }
+                        distance_meter: { type: number }
+                        time_s: { type: number }
+        "404":
+          description: 路线已过期或不存在
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error_code, message]
+                properties:
+                  error_code: { type: integer, example: 2005 }
+                  message: { type: string }
