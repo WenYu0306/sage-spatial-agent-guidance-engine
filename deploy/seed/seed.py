@@ -290,7 +290,7 @@ def _seed_activities(
         if aid:
             cur.execute(
                 "update activities set poi_id=%s, owner_type=%s, act_type=%s, description=%s, "
-                "start_at=%s, end_at=%s, status='active', rules=%s, created_by=%s where id=%s",
+                "start_at=%s, end_at=%s, status='published', rules=%s, created_by=%s where id=%s",
                 (poi_id, a.get("owner", "venue"), a["act_type"], a.get("description"),
                  a["start_at"], a["end_at"], Jsonb(a.get("rules", {})), admin_uid, aid),
             )
@@ -298,7 +298,7 @@ def _seed_activities(
             cur.execute(
                 "insert into activities (tenant_id, venue_id, poi_id, owner_type, act_type, "
                 "title, description, start_at, end_at, status, rules, created_by) "
-                "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'active', %s, %s)",
+                "values (%s, %s, %s, %s, %s, %s, %s, %s, %s, 'published', %s, %s)",
                 (tenant_id, venue_id, poi_id, a.get("owner", "venue"), a["act_type"],
                  a["title"], a.get("description"), a["start_at"], a["end_at"],
                  Jsonb(a.get("rules", {})), admin_uid),

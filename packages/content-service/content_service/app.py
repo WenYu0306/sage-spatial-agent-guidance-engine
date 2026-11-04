@@ -94,6 +94,25 @@ class ClaimBody(BaseModel):
     anonymous_id: str = Field(min_length=1, max_length=64)
 
 
+class RouteNodeIn(BaseModel):
+    venue_id: int
+    floor_id: int
+    node_type: str = "waypoint"
+    poi_id: int | None = None
+    x: float
+    y: float
+    accessible: bool = True
+
+class RouteEdgeIn(BaseModel):
+    venue_id: int
+    from_node_id: int
+    to_node_id: int
+    edge_type: str = "walk"
+    distance_meter: float
+    weight: float | None = None
+    accessible: bool = True
+    is_bidirectional: bool = True
+
 class HeartbeatBody(BaseModel):
     """设备心跳（F-19/PRD 733）：仅 device 角色，整行更新天然幂等。"""
 
@@ -212,6 +231,7 @@ def create_app(dsn: str) -> FastAPI:
         category_code: str | None = None,
         status: str | None = None,
         keyword: str | None = None,
+        scene_tag: str | None = None,
         merchant_id: int | None = None,
         open_now: bool = False,
         page: int = Query(1, ge=1),
@@ -228,8 +248,8 @@ def create_app(dsn: str) -> FastAPI:
             where.append("p.floor_id=%s")
             params.append(floor_id)
         if category_code:
-            where.append("p.category_code=%s")
-            params.append(category_code)
+            where.append("p.category_code = any(%s)")
+            params.append(_expand_category(ctx.tenant_id, category_code))
         if "guest" in ctx.roles:
             where.append("p.status='published'")  # guest 只见已发布（M12）
         elif status:
@@ -238,6 +258,12 @@ def create_app(dsn: str) -> FastAPI:
         if keyword:
             where.append("(p.name ilike %s or p.intro ilike %s)")
             params.extend([f"%{keyword}%", f"%{keyword}%"])
+        if scene_tag:
+            # 场景词与标签双向子串包含（D-029：自 M5 迁入，行为一致）
+            where.append(
+                "exists (select 1 from jsonb_array_elements_text(p.tags) t "
+                "where t like '%%' || %s || '%%' or %s like '%%' || t || '%%')")
+            params.extend([scene_tag, scene_tag])
         if merchant_id is not None:
             if ctx.merchant_id is not None and merchant_id != ctx.merchant_id:
 
@@ -256,13 +282,16 @@ def create_app(dsn: str) -> FastAPI:
         total = one("select count(*) " + base, tuple(params))[0]
         data = rows(
             "select p.id, p.name, p.category_code, p.floor_id, p.merchant_id, "
-            "p.position_x, p.position_y, p.status, p.tags, p.intro " + base +
+            "p.position_x, p.position_y, p.status, p.tags, p.intro, "
+            "p.hot_score, f.name " + base.replace("from pois p", "from pois p "
+            "join floors f on f.id=p.floor_id") +
             " order by p.id limit %s offset %s",
             tuple(params) + (page_size, (page - 1) * page_size))
         return {"items": [{"id": r[0], "name": r[1], "category_code": r[2],
                            "floor_id": r[3], "merchant_id": r[4],
                            "position_x": float(r[5]), "position_y": float(r[6]),
-                           "status": r[7], "tags": r[8], "intro": r[9]}
+                           "status": r[7], "tags": r[8], "intro": r[9],
+                           "hot_score": float(r[10]), "floor": r[11]}
                           for r in data], "total": total, "page": page,
                 "page_size": page_size}
 
@@ -390,6 +419,147 @@ def create_app(dsn: str) -> FastAPI:
         runtime.oplog(ctx.tenant_id, ctx.user_id, "publish", "poi", poi_id,
                       ctx.trace_id, ctx.ip, diff={"to": target})
         return {"id": poi_id, "status": target}
+
+    @app.get("/api/v1/pois/nearest")
+    def pois_nearest(
+        ctx: AuthContext = Depends(runtime.optional()),
+        venue_id: int = Query(...),
+        category_code: str = Query(...),
+        x: float | None = Query(None),
+        y: float | None = Query(None),
+        floor_id: int | None = Query(None),
+        limit: int = Query(3, ge=1, le=20),
+    ):
+        """设施最近查询（D-029，M5 facility.nearest 迁移目标）。
+
+        有位置：同层优先+距离升序（热度破平）；无位置：按热度，不声称同层。
+        guest 仅 published。
+        """
+        where = ["p.tenant_id=%s", "p.deleted_at is null", "p.status='published'"]
+        params: list = [ctx.tenant_id]
+        vrow = one("select id, tenant_id from venues where id=%s and status='active'",
+                   (venue_id,))
+        if not vrow:
+            raise HTTPException(status_code=401, detail="场地不存在或未开放")
+        params = [vrow[1]]
+        where = ["p.tenant_id=%s", "p.deleted_at is null", "p.status='published'"]
+        where.append("p.venue_id=%s")
+        params.append(venue_id)
+        where.append("p.category_code = any(%s)")
+        params.append(_expand_category(ctx.tenant_id, category_code))
+        data = rows(
+            "select p.id, p.name, p.floor_id, p.position_x, p.position_y, "
+            "p.hot_score, f.name from pois p "
+            "join floors f on f.id=p.floor_id where " + " and ".join(where),
+            tuple(params))
+        has_position = x is not None and y is not None and floor_id is not None
+        items = []
+        for r in data:
+            same_floor = has_position and r[2] == floor_id
+            dist = (((float(r[3]) - x) ** 2 + (float(r[4]) - y) ** 2) ** 0.5
+                    if has_position and r[2] == floor_id else 1e9)
+            items.append({"poi_id": r[0], "name": r[1], "floor": r[6],
+                          "position_x": float(r[3]), "position_y": float(r[4]),
+                          "hot_score": float(r[5]), "same_floor": same_floor,
+                          "_d": dist})
+        items.sort(key=(lambda i: (i["_d"], -i["hot_score"])) if has_position
+                   else (lambda i: -i["hot_score"]))
+        return {"items": [{k: v for k, v in i.items() if k != "_d"}
+                          for i in items[:limit]]}
+
+    def _expand_category(tenant_id: int, key: str) -> list:
+        """分类解析+父类展开（自 M5 _resolve_category_codes 迁入）。
+
+        key 可为英文 code 或中文 name（"火锅"→hotpot 及其子类；
+        "餐厅"→restaurant 及全部子类）。无匹配时原样返回（调用方自担）。
+        """
+        row = one(
+            "select code, parent_code from poi_categories "
+            "where tenant_id=%s and (code=%s or name=%s)", (tenant_id, key, key))
+        if not row:
+            return [key]
+        base = row[1] or row[0]  # 父类取自身并展开子类；子类取自身
+        if row[1]:
+            base = row[0]
+        kids = rows(
+            "select code from poi_categories where tenant_id=%s and (code=%s or parent_code=%s)",
+            (tenant_id, base, base))
+        return [r[0] for r in kids] or [key]
+
+    @app.get("/api/v1/route-nodes")
+    def route_nodes_list(
+        ctx: AuthContext = Depends(runtime.optional()),
+        venue_id: int = Query(...),
+        poi_id: int | None = Query(None),
+        floor_id: int | None = Query(None),
+    ):
+        """路网节点读（D-029：M5 目标解析的数据源；guest 可读）。"""
+        where = ["n.tenant_id=%s", "n.venue_id=%s"]
+        params: list = [ctx.tenant_id, venue_id]
+        if poi_id is not None:
+            where.append("n.poi_id=%s")
+            params.append(poi_id)
+        if floor_id is not None:
+            where.append("n.floor_id=%s")
+            params.append(floor_id)
+        data = rows(
+            "select n.id, n.node_type, n.poi_id, n.x, n.y, n.accessible, f.name "
+            "from route_nodes n join floors f on f.id=n.floor_id "
+            "where " + " and ".join(where) + " order by n.id",
+            tuple(params))
+        return {"items": [{"id": r[0], "node_type": r[1], "poi_id": r[2],
+                           "x": float(r[3]), "y": float(r[4]),
+                           "accessible": r[5], "floor": r[6]} for r in data]}
+
+    @app.post("/api/v1/route-nodes")
+    def route_node_create(body: RouteNodeIn,
+                          ctx: AuthContext = Depends(runtime.dependency(
+                              "platform_admin", "venue_admin", "venue_editor"))):
+        ctx.ensure_venue(body.venue_id)
+        nid = one(
+            "insert into route_nodes (tenant_id, venue_id, floor_id, node_type, poi_id, "
+            "x, y, accessible) values (%s, %s, %s, %s, %s, %s, %s, %s) returning id",
+            (ctx.tenant_id, body.venue_id, body.floor_id, body.node_type,
+             body.poi_id, body.x, body.y, body.accessible))[0]
+        runtime.oplog(ctx.tenant_id, ctx.user_id, "create", "route_node", nid,
+                      ctx.trace_id, ctx.ip)
+        return {"id": nid}
+
+    @app.get("/api/v1/route-edges")
+    def route_edges_list(
+        ctx: AuthContext = Depends(runtime.optional()),
+        venue_id: int = Query(...),
+        node_id: int | None = Query(None),
+    ):
+        sql = ("select e.id, e.from_node_id, e.to_node_id, e.edge_type, "
+               "e.distance_meter, e.weight, e.accessible, e.is_bidirectional "
+               "from route_edges e where e.tenant_id=%s and e.venue_id=%s")
+        params: list = [ctx.tenant_id, venue_id]
+        if node_id is not None:
+            sql += " and (e.from_node_id=%s or e.to_node_id=%s)"
+            params.extend([node_id, node_id])
+        data = rows(sql + " order by e.id", tuple(params))
+        return {"items": [{"id": r[0], "from_node_id": r[1], "to_node_id": r[2],
+                           "edge_type": r[3], "distance_meter": float(r[4]),
+                           "weight": float(r[5]) if r[5] is not None else None,
+                           "accessible": r[6], "bidirectional": r[7]} for r in data]}
+
+    @app.post("/api/v1/route-edges")
+    def route_edge_create(body: RouteEdgeIn,
+                          ctx: AuthContext = Depends(runtime.dependency(
+                              "platform_admin", "venue_admin", "venue_editor"))):
+        ctx.ensure_venue(body.venue_id)
+        weight = body.weight if body.weight is not None else body.distance_meter / 1.2
+        eid = one(
+            "insert into route_edges (tenant_id, venue_id, from_node_id, to_node_id, "
+            "edge_type, distance_meter, weight, accessible, is_bidirectional) "
+            "values (%s, %s, %s, %s, %s, %s, %s, %s, %s) returning id",
+            (ctx.tenant_id, body.venue_id, body.from_node_id, body.to_node_id,
+             body.edge_type, body.distance_meter, weight, body.accessible,
+             body.is_bidirectional))[0]
+        runtime.oplog(ctx.tenant_id, ctx.user_id, "create", "route_edge", eid,
+                      ctx.trace_id, ctx.ip)
+        return {"id": eid}
 
     @app.get("/api/v1/pois/{poi_id}")
     def poi_detail(poi_id: int, ctx: AuthContext = Depends(runtime.optional())):

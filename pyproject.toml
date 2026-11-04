@@ -46,12 +46,24 @@ forbidden_modules = ["content_service", "analytics_service"]
 # 禁止 import 其他模块的 Python 实现。
 # L0 基础层（platform_core 与 api-contract）不在本契约内：全仓共享地基，各包可
 # import（D-018）；LLMProvider 抽象随 M5 移入 platform_core.llm。
+# D-029：spatial_model 重定位为纯空间计算叶子库——任何模块可 import 它，
+# 它不得 import 任何兄弟模块（单独 forbidden 契约保证）。
 [[tool.importlinter.contracts]]
 name = "模块间禁止互相 import"
 type = "independence"
 modules = [
-    "spatial_model", "route_engine", "agent_orchestrator",
+    "route_engine", "agent_orchestrator",
     "knowledge_rag", "recommender", "voice_adapter", "avatar_adapter",
+    "content_service", "analytics_service",
+]
+
+[[tool.importlinter.contracts]]
+name = "M2 纯函数库不得依赖兄弟模块"
+type = "forbidden"
+source_modules = ["spatial_model"]
+forbidden_modules = [
+    "route_engine", "agent_orchestrator", "knowledge_rag",
+    "recommender", "voice_adapter", "avatar_adapter",
     "content_service", "analytics_service",
 ]
 

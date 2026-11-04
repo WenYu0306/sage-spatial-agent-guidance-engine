@@ -54,7 +54,37 @@ def ids():
     return tid, vid, f1
 
 
-@pytest.fixture
+def _content_client(_dsn=None):
+    """内联 content 服务（M8）：工具 HTTP 化后的测试注入点（CI 密闭、不依赖 8945）。"""
+    import os
+
+    dsn = (_dsn or os.environ.get("DATABASE_URL") or "").replace(
+        "postgresql+psycopg://", "postgresql://", 1)
+    import asyncio
+
+    import httpx
+    from content_service.app import create_app as content_create_app
+
+    app = content_create_app(dsn=dsn)
+
+    class _Sync(httpx.BaseTransport):
+        def __init__(self, a):
+            self.i = httpx.ASGITransport(app=a)
+
+        def handle_request(self, request):
+            loop = asyncio.new_event_loop()
+            try:
+                resp = loop.run_until_complete(self.i.handle_async_request(request))
+                body = loop.run_until_complete(resp.aread())
+                return httpx.Response(resp.status_code, headers=resp.headers,
+                                      content=body, request=request)
+            finally:
+                loop.close()
+
+    return httpx.Client(transport=_Sync(app), base_url="http://c")
+
+
+@pytest.fixture(scope="module")
 def ctx(ids):
     tid, vid, f1 = ids
     return ToolContext(
@@ -67,6 +97,7 @@ def ctx(ids):
         http_recommender=httpx.Client(
             transport=_SyncASGI(recommender_create_app(dsn=_dsn())),
             base_url="http://rec.test"),
+        http_content=_content_client(),
         position={"x": 600, "y": 400, "floor_id": f1},
     )
 
@@ -112,9 +143,13 @@ def test_promotion_list(ctx):
 
 def test_coupon_claim_idempotent(ctx):
     anon = f"test-{uuid.uuid4().hex[:8]}"
+    # 该券可能被其他验收领至售罄：测试自带库存重置（幂等语义与数据量解耦）
+    with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+        cur.execute("update coupons set claimed_qty=0 where title like '满 100 减 20%'")
+        conn.commit()
     r1 = run_tool("coupon.claim", {"coupon_title": "满 100 减 20", "anonymous_id": anon}, ctx)
     r2 = run_tool("coupon.claim", {"coupon_title": "满 100 减 20", "anonymous_id": anon}, ctx)
-    assert r1.data["claimed"] is True and r1.data["duplicate"] is False
+    assert r1.data["claimed"] is True and r1.data["duplicate"] is False, r1.data
     assert r2.data["claimed"] is True and r2.data["duplicate"] is True, "幂等：不重复发放"
 
 

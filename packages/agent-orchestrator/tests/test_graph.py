@@ -57,6 +57,36 @@ def base_ids():
     return tid, vid, f1
 
 
+def _content_client(_dsn=None):
+    """内联 content 服务（M8）注入。缺省读 DATABASE_URL。"""
+    import os
+
+    dsn = (_dsn or os.environ.get("DATABASE_URL") or "").replace(
+        "postgresql+psycopg://", "postgresql://", 1)
+    import asyncio
+
+    import httpx
+    from content_service.app import create_app as content_create_app
+
+    app = content_create_app(dsn=dsn)
+
+    class _Sync(httpx.BaseTransport):
+        def __init__(self, a):
+            self.i = httpx.ASGITransport(app=a)
+
+        def handle_request(self, request):
+            loop = asyncio.new_event_loop()
+            try:
+                resp = loop.run_until_complete(self.i.handle_async_request(request))
+                body = loop.run_until_complete(resp.aread())
+                return httpx.Response(resp.status_code, headers=resp.headers,
+                                      content=body, request=request)
+            finally:
+                loop.close()
+
+    return httpx.Client(transport=_Sync(app), base_url="http://c")
+
+
 def _invoke(base_ids, message: str):
     tid, vid, f1 = base_ids
     ctx = ToolContext(
@@ -64,6 +94,7 @@ def _invoke(base_ids, message: str):
         venue_name="山雀里·栖云广场", dsn=_dsn(),
         http_route=httpx.Client(transport=_sync_asgi(route_app), base_url="http://r"),
         http_knowledge=httpx.Client(transport=_sync_asgi(knowledge_app), base_url="http://k"),
+        http_content=_content_client(),
         position={"x": 600, "y": 400, "floor_id": f1},
     )
     provider = FakeChat()
@@ -146,6 +177,7 @@ def test_hallucinated_store_name_degrades(base_ids):
         venue_name="山雀里·栖云广场", dsn=_dsn(),
         http_route=httpx.Client(transport=_sync_asgi(route_app), base_url="http://r"),
         http_knowledge=httpx.Client(transport=_sync_asgi(knowledge_app), base_url="http://k"),
+        http_content=_content_client(),
         position={"x": 600, "y": 400, "floor_id": f1},
     )
 

@@ -6,11 +6,41 @@ import json
 import uuid
 
 import httpx
-import psycopg
-import pytest
-from agent_orchestrator.app import create_app
-from fastapi.testclient import TestClient
-from route_engine.app import app as route_app
+
+
+def _content_client(_dsn=None):
+    """内联 content 服务（M8）：工具 HTTP 化后的测试注入点（CI 密闭、不依赖 8945）。"""
+    import os
+
+    dsn = (_dsn or os.environ.get("DATABASE_URL") or "").replace(
+        "postgresql+psycopg://", "postgresql://", 1)
+    import asyncio
+
+    import httpx
+    from content_service.app import create_app as content_create_app
+
+    app = content_create_app(dsn=dsn)
+
+    class _Sync(httpx.BaseTransport):
+        def __init__(self, a):
+            self.i = httpx.ASGITransport(app=a)
+
+        def handle_request(self, request):
+            loop = asyncio.new_event_loop()
+            try:
+                resp = loop.run_until_complete(self.i.handle_async_request(request))
+                body = loop.run_until_complete(resp.aread())
+                return httpx.Response(resp.status_code, headers=resp.headers,
+                                      content=body, request=request)
+            finally:
+                loop.close()
+
+    return httpx.Client(transport=_Sync(app), base_url="http://c")
+import psycopg  # noqa: E402
+import pytest  # noqa: E402
+from agent_orchestrator.app import create_app  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
+from route_engine.app import app as route_app  # noqa: E402
 
 
 class _SyncASGI(httpx.BaseTransport):
@@ -48,6 +78,7 @@ def client():
     app = create_app(provider=FakeChat(), checkpointer=None)
     # 注入内联服务 transport：测试免起端口
     app.state.http_route = httpx.Client(transport=_SyncASGI(route_app), base_url="http://r")
+    app.state.http_content = _content_client()
     return TestClient(app)
 
 

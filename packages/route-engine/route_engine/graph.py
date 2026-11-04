@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import networkx as nx
+from spatial_model import distance_2d
 
 
 class RouteError(Exception):
@@ -97,9 +98,9 @@ def plan(
     goal = g.nodes[goal_id]
 
     def h(u: int, v: int) -> float:  # noqa: ARG001 第二参数由 networkx 约定传入，此处不用
-        dx = g.nodes[u]["x"] - goal["x"]
-        dy = g.nodes[u]["y"] - goal["y"]
-        return ((dx * dx + dy * dy) ** 0.5) * scale_meter / 1.2
+        # A* 启发式 = M2 空间库距离 × scale ÷ 1.2（步行绕行系数，口径与边距一致）
+        return distance_2d((g.nodes[u]["x"], g.nodes[u]["y"]),
+                           (goal["x"], goal["y"])) * scale_meter / 1.2
 
     try:
         path = nx.astar_path(g, start_id, goal_id, heuristic=h, weight="weight")

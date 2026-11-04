@@ -1,1 +1,5 @@
-"""空间数据模型（场馆/楼层/POI/路网图）（M2）占位包：US-001 脚手架阶段，功能随后续任务实现。"""
+"""M2 空间计算纯函数库（D-029）：距离/最近排序/连通性——场景无关，无 IO。"""
+
+from .geometry import connected_components, distance_2d, sort_nearest
+
+__all__ = ["connected_components", "distance_2d", "sort_nearest"]

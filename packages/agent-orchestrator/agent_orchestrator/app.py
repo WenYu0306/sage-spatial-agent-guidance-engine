@@ -178,6 +178,7 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
     # 嵌入 API 有秒级抖动，5s 实测会误伤（预算 12s 内取 8s）
     http_knowledge = httpx.Client(base_url=settings.knowledge_rag_url, timeout=8)
     http_recommender = httpx.Client(base_url=settings.recommender_url, timeout=5)
+    http_content = httpx.Client(base_url=settings.content_url, timeout=8)
     route_cache = _RouteCache(settings.redis_url)
 
     app = FastAPI(title="agent-orchestrator", version="0.1.0")
@@ -263,6 +264,7 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
             venue_name=VENUE_NAME, dsn=settings.database_url,
             # 测试可经 app.state.http_route 注入内联 transport；生产走 settings 客户端
             http_route=getattr(app.state, "http_route", None) or http_route,
+            http_content=getattr(app.state, "http_content", None) or http_content,
             http_knowledge=http_knowledge,
             http_recommender=http_recommender, position=pos,
             prefer_accessible=bool((req.context or {}).get("prefer_accessible")),

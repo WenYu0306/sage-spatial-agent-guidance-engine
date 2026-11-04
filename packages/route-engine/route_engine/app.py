@@ -14,6 +14,14 @@ from .graph import RouteError, build_graph, plan
 app = FastAPI(title="route-engine", version="0.1.0")
 
 
+class NearestNodeRequest(BaseModel):
+    tenant_code: str
+    venue_name: str
+    floor_id: int
+    x: float
+    y: float
+
+
 class PlanRequest(BaseModel):
     tenant_code: str
     venue_name: str
@@ -25,6 +33,25 @@ class PlanRequest(BaseModel):
 @app.get("/health")
 def health() -> dict:
     return {"ok": True}
+
+
+@app.post("/route/plan/nearest-node")
+def nearest_node(req: NearestNodeRequest) -> dict:
+    """同层最近路网节点（M5 设施路线的起点解析；M2 服务化后 M5 不再直查路网）。"""
+    import os
+
+    import psycopg
+
+    dsn = os.environ["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://", 1)
+    with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            "select n.id from route_nodes n join venues v on v.id=n.venue_id "
+            "join tenants t on t.id=v.tenant_id "
+            "where t.code=%s and v.name=%s and n.floor_id=%s and n.node_type='waypoint' "
+            "order by (n.x-%s)^2+(n.y-%s)^2 limit 1",
+            (req.tenant_code, req.venue_name, req.floor_id, req.x, req.y))
+        row = cur.fetchone()
+    return {"node_id": row[0]} if row else {"node_id": None}
 
 
 @app.post("/route/plan")

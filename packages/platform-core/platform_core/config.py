@@ -11,6 +11,7 @@ class Settings:
     database_url: str
     redis_url: str
     sage_env: str
+    content_url: str
     route_engine_url: str
     knowledge_rag_url: str
     recommender_url: str
@@ -25,6 +26,7 @@ class Settings:
             redis_url=os.environ.get("REDIS_URL", "redis://localhost:6379/0"),
             sage_env=os.environ.get("SAGE_ENV", "dev"),
             route_engine_url=os.environ.get("SVC_ROUTE_ENGINE", "http://localhost:8942"),
+            content_url=os.environ.get("SVC_CONTENT", "http://localhost:8945"),
             knowledge_rag_url=os.environ.get("SVC_KNOWLEDGE_RAG", "http://localhost:8943"),
             recommender_url=os.environ.get("SVC_RECOMMENDER", "http://localhost:8944"),
         )

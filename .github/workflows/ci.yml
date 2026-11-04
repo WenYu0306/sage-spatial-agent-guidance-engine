@@ -47,6 +47,12 @@ jobs:
           uv run python deploy/seed/seed.py
           # pgvector 需灌向量；无 LLM_API_KEY 时 ingest 走 Mock 嵌入（provenance 断言仍可满足）
           uv run python -m knowledge_rag.ingest
+      - name: M5 工具层禁直读（审计纪律：业务数据只能走 HTTP）
+        run: |
+          if grep -n "import psycopg" packages/agent-orchestrator/agent_orchestrator/tools.py; then
+            echo "tools.py 出现 psycopg 直读——业务数据必须走 M8 HTTP"; exit 1
+          fi
+          echo "tools.py 零直读 ok"
       - name: pytest（含 DB/越权/幂等用例）
         run: uv run pytest -q
 

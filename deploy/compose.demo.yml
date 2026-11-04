@@ -123,6 +123,9 @@ services:
         condition: service_healthy
 
   nginx:
+    volumes:
+      - ../maps:/srv/sage-maps:ro
+
     build:
       context: ..
       dockerfile: deploy/docker/Dockerfile.admin
