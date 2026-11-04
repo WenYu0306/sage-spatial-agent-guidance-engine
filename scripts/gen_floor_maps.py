@@ -30,7 +30,8 @@ CAT_STYLE: dict[str, tuple[str, str]] = {
     **{c: ("#fff7ed", "#fdba74") for c in
        ("chinese", "hotpot", "japanese", "western", "coffee_tea", "bakery", "fastfood")},
     **{c: ("#eff6ff", "#93c5fd") for c in
-       ("fashion", "shoes_bags", "digital", "beauty", "jewelry", "toys_books", "glasses", "supermarket")},
+       ("fashion", "shoes_bags", "digital", "beauty", "jewelry",
+        "toys_books", "glasses", "supermarket")},
     **{c: ("#f0fdf4", "#86efac") for c in ("cinema", "gym", "kids_play", "education")},
     **{c: ("#fafaf9", "#d6d3d1") for c in ("salon", "life_service")},
 }
@@ -92,9 +93,11 @@ def _atrium() -> list[str]:
     cx, cy, r = ATRIUM
     out = [f'<circle cx="{cx:g}" cy="{cy:g}" r="{r:g}" fill="#eef2ff" stroke="#c7d2fe" '
            f'stroke-width="1.5" stroke-dasharray="5 4" class="atrium"/>',
-           f'<circle cx="{cx:g}" cy="{cy:g}" r="52" fill="none" stroke="#e0e7ff" stroke-width="1"/>']
+           f'<circle cx="{cx:g}" cy="{cy:g}" r="52" fill="none"'
+           f' stroke="#e0e7ff" stroke-width="1"/>']
     for px, py in ((560, 362), (640, 362), (560, 462), (640, 462)):
-        out.append(f'<circle cx="{px}" cy="{py}" r="5.5" fill="#d9f99d" stroke="#a3e635" stroke-width="1"/>')
+        out.append(f'<circle cx="{px}" cy="{py}" r="5.5" fill="#d9f99d"'
+                   f' stroke="#a3e635" stroke-width="1"/>')
     out.append(_text(cx, cy - 6, "中庭", 17, "#818cf8", "600"))
     return out
 
@@ -118,12 +121,15 @@ def _chrome(scale: float) -> list[str]:
            '<path d="M 1128 738 L 1123 754 L 1133 754 Z" fill="#475569"/>',
            _text(1128, 764, "N", 9, "#475569")]
     m20 = round(20 / scale, 1)
-    out += [f'<line x1="40" y1="744" x2="{40 + m20:g}" y2="744" stroke="#475569" stroke-width="1.5"/>']
+    out += [f'<line x1="40" y1="744" x2="{40 + m20:g}" y2="744"'
+            f' stroke="#475569" stroke-width="1.5"/>']
     for tx in (40, 40 + m20 / 2, 40 + m20):
-        out.append(f'<line x1="{tx:g}" y1="740" x2="{tx:g}" y2="748" stroke="#475569" stroke-width="1"/>')
+        out.append(f'<line x1="{tx:g}" y1="740" x2="{tx:g}" y2="748"'
+                   f' stroke="#475569" stroke-width="1"/>')
     out += [_text(40, 736, "0", 9.5, "#475569"), _text(40 + m20 / 2, 736, "10", 9.5, "#475569"),
             _text(40 + m20, 736, "20 m", 9.5, "#475569"),
-            _text(1160, 792, "演示底图 · 由 scripts/gen_floor_maps.py 生成", 9, "#94a3b8", anchor="end")]
+            _text(1160, 792, "演示底图 · 生成于 scripts/gen_floor_maps.py",
+                  9, "#94a3b8", anchor="end")]
     return out
 
 

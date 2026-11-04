@@ -121,6 +121,6 @@
 <text x="40" y="736" font-size="9.5" fill="#475569" font-weight="normal" text-anchor="middle">0</text>
 <text x="106.65" y="736" font-size="9.5" fill="#475569" font-weight="normal" text-anchor="middle">10</text>
 <text x="173.3" y="736" font-size="9.5" fill="#475569" font-weight="normal" text-anchor="middle">20 m</text>
-<text x="1160" y="792" font-size="9" fill="#94a3b8" font-weight="normal" text-anchor="end">演示底图 · 由 scripts/gen_floor_maps.py 生成</text>
+<text x="1160" y="792" font-size="9" fill="#94a3b8" font-weight="normal" text-anchor="end">演示底图 · 生成于 scripts/gen_floor_maps.py</text>
 </g>
 </svg>
