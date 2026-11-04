@@ -251,6 +251,8 @@ spatial-agent-platform/
 
 ### M2 spatial-model
 
+> **实现形态（D-029，2026-11-05）**：空间数据的 CRUD 端点由 M8 承载（/pois/nearest、/route-nodes、/route-edges、/pois 场景参数），本包重定位为**纯空间计算库**（距离/最近排序/连通性纯函数，供 M3/M4/scene_check import）。理由与恢复条件见 DECISIONS.md D-029。
+
 - **职责**：空间数据模型与查询。楼层、区域、POI、设施、地图图层、路网节点与边的数据定义与 CRUD；空间索引；数据字典（POI 分类体系可配置，这是换场景的关键）。
 - **对外接口**：`Venue/Floor/POI/Facility/MapLayer/RouteNode/RouteEdge` 模型与仓储；`poi.query(filters)`、`poi.nearby(point, radius)`、`dict.list_categories(tenant_id)`。
 - **依赖**：M0、M1。
