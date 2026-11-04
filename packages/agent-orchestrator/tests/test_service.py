@@ -177,3 +177,29 @@ def test_rank_step_receives_same_turn_search_candidates():
                    if s["step_type"] == "tool_call" and s["tool_code"] == "recommend.rank"]
     assert rank_inputs, "rank 步骤未执行"
     assert rank_inputs[0].get("candidates"), "rank 应拿到同轮 search 的候选"
+
+
+def test_tool_budget_resets_per_turn():
+    """checkpointer 跨轮残留回归：同一会话连问 7 轮，第 7 轮工具仍须执行
+    （tool_calls 曾累计不清零，6 次后整轮被预算锁死）。"""
+    app = create_app(provider=FakeRecommendChat(), checkpointer=None)
+    client = TestClient(app)
+    vid, _ = _venue_ids()
+    sid = None
+    last_trace_tools = None
+    for i in range(7):
+        with client.stream(
+            "POST", "/api/v1/agent/chat",
+            json={"venue_id": vid, "session_id": sid,
+                  "message": f"推荐适合聚餐的火锅第{i}轮"},
+        ) as resp:
+            assert resp.status_code == 200
+            text = "".join(chunk for chunk in resp.iter_text())
+        for block in text.split("\n\n"):
+            if block.startswith("event: meta"):
+                sid = json.loads(block.split("data: ", 1)[1])["session_id"]
+        steps = client.get(f"/api/v1/agent/sessions/{sid}/trace").json()["steps"]
+        last_mid = max(s["message_id"] for s in steps)
+        last_trace_tools = [s for s in steps
+                            if s["step_type"] == "tool_call" and s["message_id"] == last_mid]
+    assert last_trace_tools, "第 7 轮应有工具调用记录"

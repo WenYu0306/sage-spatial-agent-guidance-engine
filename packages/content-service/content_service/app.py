@@ -463,7 +463,9 @@ def create_app(dsn: str) -> FastAPI:
         if act_type:
             where.append("act_type=%s")
             params.append(act_type)
-        if status:
+        if "guest" in ctx.roles:
+            where.append("status='published'")  # guest 只见已发布（M12，回归审计 S-1）
+        elif status:
             where.append("status=%s")
             params.append(status)
         if poi_id is not None:

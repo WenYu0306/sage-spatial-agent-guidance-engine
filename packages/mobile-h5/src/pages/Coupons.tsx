@@ -9,16 +9,24 @@ import { anonymousId } from "../lib/guest.ts";
 interface CouponRow {
   id: number;
   title: string;
-  type: string;
+  coupon_type: string;
   threshold: number | null;
   value: number | null;
   remaining: number;
   poi_name: string | null;
 }
 
+/** 后端成功={id,coupon_id,duplicate}；售罄=200+error_code 4002（PRD 契约）。 */
 interface ClaimResult {
-  claimed: boolean;
-  duplicate: boolean;
+  id?: number;
+  duplicate?: boolean;
+  error_code?: number;
+}
+
+function couponDetail(c: CouponRow): string {
+  if (c.coupon_type === "discount") return `${(c.value ?? 0) / 10} 折`;
+  if (c.coupon_type === "full_reduction") return `满 ${c.threshold ?? 0} 减 ${c.value ?? 0}`;
+  return "赠品券";
 }
 
 export function CouponsPage() {
@@ -37,7 +45,7 @@ export function CouponsPage() {
       );
       setClaimState((s) => ({
         ...s,
-        [couponId]: r.duplicate ? "已领过" : r.claimed ? "领取成功" : "暂时领完",
+        [couponId]: r.duplicate ? "已领过" : r.id ? "领取成功" : "暂时领完",
       }));
     } catch {
       setClaimState((s) => ({ ...s, [couponId]: "领取失败" }));
@@ -59,7 +67,7 @@ export function CouponsPage() {
               <div className="text-sm font-semibold">{c.title}</div>
               <div className="text-xs text-slate-500">
                 {c.poi_name ? `${c.poi_name} · ` : ""}
-                {c.type === "percent" ? `${c.value ?? 0} 折` : `满 ${c.threshold ?? 0} 减 ${c.value ?? 0}`}
+                {couponDetail(c)}
                 {` · 剩 ${c.remaining} 张`}
               </div>
             </div>

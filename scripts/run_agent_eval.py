@@ -86,7 +86,9 @@ def run_full(args) -> int:
 
     def chat(message, session_id=None):
         events, cur_event, cur_data = [], "", ""
-        body = {"venue_id": venue_id, "message": message}
+        # 评测模拟真实大屏：带位置上下文（否则 navigate 类问句正确地反问起点，无法评测路线）
+        body = {"venue_id": venue_id, "message": message,
+                "floor_id": 2, "context": {"position_x": 600, "position_y": 400}}
         if session_id is not None:
             body["session_id"] = session_id
         with httpx.stream("POST", orch + "/api/v1/agent/chat",
@@ -127,20 +129,25 @@ def run_full(args) -> int:
         steps = httpx.get(orch + "/api/v1/agent/sessions/" + str(session_id) + "/trace",
                           timeout=30).json().get("steps", [])
         actual = "?"
-        for st in steps:
+        for st in reversed(steps):
+            # 多轮用例（preturn）取本轮（最后一个）intent_parse，而非会话首问
             if st["step_type"] == "intent_parse" and st.get("output"):
                 actual = st["output"].get("intent", "?")
                 break
         chain = [st["tool_code"] for st in steps if st["step_type"] == "tool_call"]
         hallucinated = any(st["step_type"] == "post_validate" for st in steps)
         keys = [str(k) for k in case.get("answer_keys", []) if k not in META_KEYS]
-        blob = answer + json.dumps(cards, ensure_ascii=False)
+        # 命中面=回答+卡片+路线事件（route 的 nodes 标签是答案的一部分）
+        route_ev = by_type.get("route", [{}])[-1]
+        blob = answer + json.dumps(cards, ensure_ascii=False) + json.dumps(
+            route_ev.get("nodes", {}), ensure_ascii=False)
         poi_hit = any(k in blob for k in keys)
         type_check = {
             "venue_info": bool(by_type.get("citations")),
             "fallback": (not hallucinated) and done.get("status") == "ok",
             "coupon_claim": "coupon.claim" in chain or poi_hit,
-        }.get(case["intent"], poi_hit or bool(chain))
+            # 默认判据收紧（审计）：只看链非空会掩盖空结果/失败工具——内容必须命中
+        }.get(case["intent"], poi_hit)
         passed = (actual == case["intent"]) and type_check and done.get("status") == "ok"
         rows.append({"case": case, "actual": actual, "chain": chain,
                      "answer": answer[:26], "passed": passed,

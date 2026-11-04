@@ -165,8 +165,8 @@ def _facility_nearest(args: dict, ctx: ToolContext) -> ToolResult:
     with _conn(ctx) as conn, conn.cursor() as cur:
         codes = _resolve_category_codes(cur, ctx, args["facility"])
         cur.execute(
-            "select p.id, p.name, f.name, p.position_x, p.position_y, p.floor_id "
-            "from pois p join floors f on f.id=p.floor_id "
+            "select p.id, p.name, f.name, p.position_x, p.position_y, p.floor_id, "
+            "p.hot_score from pois p join floors f on f.id=p.floor_id "
             "join poi_categories c on c.code=p.category_code and c.tenant_id=p.tenant_id "
             "where p.tenant_id=%s and p.venue_id=%s and p.category_code = any(%s) "
             "and p.deleted_at is null",
@@ -177,16 +177,20 @@ def _facility_nearest(args: dict, ctx: ToolContext) -> ToolResult:
     pos = ctx.position or {}
     here = pos.get("floor_id")
     px, py = pos.get("x"), pos.get("y")
+    has_position = px is not None and here is not None
 
     def dist(row):
-        if px is not None and row[5] == here:
+        if has_position and row[5] == here:
             return ((float(row[3]) - px) ** 2 + (float(row[4]) - py) ** 2) ** 0.5
         return 1e9  # 跨层排后
 
-    rows.sort(key=dist)
+    rows.sort(key=lambda r: (dist(r), -float(r[6] or 0)))
+    if not has_position:
+        # 无位置上下文时"最近"无从谈起：按热度返回，不声称同层（回归：曾恒 same_floor=True）
+        rows.sort(key=lambda r: -float(r[6] or 0))
     items = [
         {"poi_id": r[0], "name": r[1], "floor": r[2],
-         "same_floor": here is None or r[5] == here}
+         "same_floor": has_position and r[5] == here}
         for r in rows[:3]
     ]
     if not items:

@@ -46,9 +46,11 @@ export function toAdCards(activities: ActivityRow[], coupons: CouponRow[]): AdCa
     key: `c-${c.id}`,
     kind: "coupon" as const,
     title: c.title,
-    detail: c.coupon_type === "percent"
-      ? `凭券享 ${c.value ?? 0} 折`
-      : `满 ${c.threshold ?? 0} 减 ${c.value ?? 0}`,
+    detail: c.coupon_type === "discount"
+      ? `${(c.value ?? 0) / 10} 折`
+      : c.coupon_type === "gift"
+        ? "赠品券"
+        : `满 ${c.threshold ?? 0} 减 ${c.value ?? 0}`,
   }));
   return [...acts, ...cps];
 }

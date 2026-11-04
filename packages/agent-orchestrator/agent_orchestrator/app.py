@@ -42,6 +42,25 @@ class ChatRequest(BaseModel):
     context: dict | None = None
 
 
+def make_checkpointer(dsn: str):
+    """PostgresSaver（长连接构造）优先；仅初始化失败才降级内存并留痕。
+
+    回归：from_conn_string 是 contextmanager 工厂，直接 .setup() 必抛 AttributeError，
+    曾被裸 except 静默换成 InMemorySaver——检查点持久化整体失效且零信号。
+    """
+    try:
+        import psycopg
+        from langgraph.checkpoint.postgres import PostgresSaver
+
+        conn = psycopg.connect(dsn)
+        saver = PostgresSaver(conn)
+        saver.setup()
+        return saver
+    except Exception:
+        logger.exception("PostgresSaver 初始化失败，降级 InMemorySaver（检查点不可持久化）")
+        return InMemorySaver()
+
+
 def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
@@ -173,13 +192,7 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
 
         prov = prov or make_provider()
         if saver is None:
-            try:
-                from langgraph.checkpoint.postgres import PostgresSaver
-
-                saver = PostgresSaver.from_conn_string(settings.database_url)
-                saver.setup()
-            except Exception:
-                saver = InMemorySaver()
+            saver = make_checkpointer(settings.database_url)
         graph = build_graph(checkpointer=saver)
 
     def _resolve_tenant_venue(cur, venue_id: int) -> tuple[int, int] | None:
@@ -260,7 +273,11 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
             try:
                 final = graph.invoke(
                     {"tenant_id": tenant_id, "venue_id": venue_id, "message": req.message,
-                     "trace_id": trace_id, "session_id": session_id, "message_id": message_id},
+                     "trace_id": trace_id, "session_id": session_id, "message_id": message_id,
+                     # 轮内状态显式清零：checkpointer 会还原上一轮 tool_calls/tool_results，
+                     # 不清零则同会话累计 6 次调用后整轮被预算锁死（回归测试覆盖）
+                     "tool_results": {}, "tool_calls": 0, "degraded": False,
+                     "error_codes": [], "citations": [], "cards": []},
                     {"configurable": {"thread_id": session_id, "ctx": ctx, "provider": prov,
                                       "prompts_dir": PROMPTS_DIR,
                                       "anonymous_id": req.anonymous_id,
