@@ -28,3 +28,4 @@
 - 2026-11-04 D-024 仓库公开（GitHub，作品集用途）+ PolyForm Noncommercial 1.0.0（商用受限，负责人指定）；uv.lock/pnpm-lock 起入库（部署可复现构建）；公开前已审计：git 历史无密钥、.env 未跟踪。
 - 2026-11-04 D-025 M9 指标读路径即时聚合 events（demo 数据量小）；metrics_daily 0008 已建表，预聚合定时任务留 V2。
 - 2026-11-04 D-026 M13 部署偏离（PRD 16/7.5）：①六后端共用一份多阶段镜像（ARG SERVICE 由 compose 注入命令，2C4G 单机省 6 份构建与磁盘）；②无镜像仓库，deploy.sh 以"git pull + 本机构建"实现"拉镜像"语义；③国内服务器镜像源走 docker.m.daocloud.io 前缀 + 清华 PyPI（ARG REGISTRY/UV_INDEX_URL 可换）；④唯一对外口 nginx:8080 绑 127.0.0.1，HTTPS 由宿主既有 caddy 反代 sage.westwardecho.com 自动签发（服务器另有 forge/westward/analyze 三个作品集项目共存，端口/内存预算见 compose 注释）。
+- 2026-11-04 D-027 真实底图管线：`scripts/gen_floor_maps.py` 以 deploy/seed 数据为单一数据源参数化出图（回字动线/中庭/锚店/垂直交通/公共服务），产出 deploy/maps/*.svg 与 map-render 内嵌 floors.ts（<g> 叠加，拾点/路径逻辑零改动）；店面坐标与走廊网格一致性由 test_map_grid（净距/避让/间距/垂直交通同位）与生成器碰撞自检双重锁定；路网是坐标派生数据，seed 重建前清空旧图防残留；设施构成维持手册 7.2 的 20 处。

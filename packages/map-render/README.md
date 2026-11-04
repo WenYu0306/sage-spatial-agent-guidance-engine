@@ -9,7 +9,8 @@
 - `src/lib/svgCoords.ts`：`clientToSvg`（getScreenCTM 逆变换，屏坐标→viewBox 坐标）/ `snap` / `inBounds`
 - `src/lib/poiExport.ts`：`toYamlLine/toYamlDoc/parseYamlDoc` — 与 `deploy/seed/data/pois_*.yaml` **完全同格式**的导出/导入
 - `src/lib/routeDraw.ts`：`floorPolylines(route, floor)` — 分段路线按楼层拆画线/换乘标记
-- 组件：`FloorPlan`（占位平面图+标记层+overlay 插槽）、`MapStage`（缩放拖动）、`PoiPicker`（index.html）、`RouteApp`（route.html）
+- 组件：`FloorPlan`（真实底图+标记层+overlay 插槽）、`MapStage`（缩放拖动）、`PoiPicker`（index.html）、`RouteApp`（route.html）
+- `src/assets/floors.ts`：内嵌三层真实底图（**生成物勿手改**）——由 `python3 scripts/gen_floor_maps.py` 从 `deploy/seed/data` 单一数据源生成，同步输出 deploy/maps/{b1,f1,f2}.svg
 
 ## 如何单独运行
 
@@ -17,7 +18,7 @@
 pnpm install
 pnpm --filter @sage/map-render demo   # http://localhost:5190（PoiPicker）
                                        # http://localhost:5190/route.html（路线渲染）
-pnpm --filter @sage/map-render test    # node:test 13 个纯函数测试
+pnpm --filter @sage/map-render test    # node:test 22 个（纯函数 + 底图资产契约）
 pnpm --filter @sage/map-render exec tsc --noEmit
 ```
 
@@ -31,4 +32,4 @@ pnpm --filter @sage/map-render exec tsc --noEmit
 
 ## 如何摘出复用到其他项目
 
-坐标换算/导出解析/画线拆分全是纯函数（无 React 依赖），换场景只改：FloorPlan 的底图 SVG（接 M2 真实分层图）、CATEGORIES 字典、`deploy/seed` 对应数据格式。缩放拖动引擎 react-zoom-pan-pinch（MIT）独立可替换。
+坐标换算/导出解析/画线拆分全是纯函数（无 React 依赖），换场景只改：底图由 `scripts/gen_floor_maps.py` 的布局模板参数化重绘（改布局约定+重跑即可，店面图形自动随 seed 数据走）、CATEGORIES 字典、`deploy/seed` 对应数据格式。缩放拖动引擎 react-zoom-pan-pinch（MIT）独立可替换。
