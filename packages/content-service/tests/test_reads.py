@@ -116,19 +116,22 @@ def test_guest_reads_published_only(client, accounts, dsn):
             (tid, vid, vid, f"草稿店{new_event_id()[:6]}",))
         draft_id = cur.fetchone()[0]
         conn.commit()
-    r = client.get("/api/v1/pois", params={"venue_id": vid})
-    assert r.status_code == 200, r.text
-    names = [i["name"] for i in r.json()["items"]]
-    assert not any(n.startswith("草稿店") for n in names), "guest 不得见草稿"
-    assert r.json()["items"], "guest 应见到 published 店铺"
-    # 草稿详情直取也拦
-    assert client.get(f"/api/v1/pois/{draft_id}",
-                      params={"venue_id": vid}).status_code == 403
-    # 优惠在窗列表可读
-    rc = client.get("/api/v1/coupons", params={"venue_id": vid})
-    assert rc.status_code == 200 and "items" in rc.json()
-    # 缺 venue_id 的 guest 请求 → 401
-    assert client.get("/api/v1/pois").status_code == 401
-    with psycopg.connect(dsn) as conn, conn.cursor() as cur:
-        cur.execute("delete from pois where id=%s", (draft_id,))
-        conn.commit()
+    try:
+        r = client.get("/api/v1/pois", params={"venue_id": vid})
+        assert r.status_code == 200, r.text
+        names = [i["name"] for i in r.json()["items"]]
+        assert not any(n.startswith("草稿店") for n in names), "guest 不得见草稿"
+        assert r.json()["items"], "guest 应见到 published 店铺"
+        # 草稿详情直取也拦
+        assert client.get(f"/api/v1/pois/{draft_id}",
+                          params={"venue_id": vid}).status_code == 403
+        # 优惠在窗列表可读
+        rc = client.get("/api/v1/coupons", params={"venue_id": vid})
+        assert rc.status_code == 200 and "items" in rc.json()
+        # 缺 venue_id 的 guest 请求 → 401
+        assert client.get("/api/v1/pois").status_code == 401
+    finally:
+        # 失败路径也必须清理（曾因断言前泄漏 2 行草稿店，seed 行数断言连锁失败）
+        with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+            cur.execute("delete from pois where id=%s", (draft_id,))
+            conn.commit()
