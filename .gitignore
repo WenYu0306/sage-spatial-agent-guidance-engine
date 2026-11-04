@@ -19,9 +19,7 @@ packages/*/dist/
 *.tsbuildinfo
 
 # uv / pnpm
-# uv.lock、pnpm-lock.yaml 正常应提交；脚手架阶段依赖未定稿，暂不锁
-uv.lock
-pnpm-lock.yaml
+# 锁文件 2026-11-04 起入库（D-024）：部署可复现构建依赖它们
 
 # 迁移/seed 本地产物
 **/__pycache__/

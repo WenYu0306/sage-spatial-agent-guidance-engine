@@ -25,3 +25,4 @@
 - 2026-11-04 D-020 M7 落地：M5 recommend.rank 切 HTTP 调 recommender（8944），八因子打分；服务不可用降级距离升序（PRD 8.2 声明路径，标 temporary）。营销旗标由 M5 传入，营销表不进 M7 内核（内核零业务词）。权重固定配置文件（F-16）。
 - 2026-11-04 D-021 merchant 标识语义（V1 无商户表）：user_roles.merchant_id=商户锚点门店 poi_id，pois.merchant_id 同值回填，商户数据过滤以此为键；商户多门店/独立商户实体留 V2。
 - 2026-11-04 D-023 M10 admin-web：自绘 shadcn 风格复制式组件（无 radix 运行时依赖，引全套留 V2）；hash 路由自写不引 router 框架（12 页内最小陌生面）；登录守卫必须声明式（渲染期改 location.hash 会因 hashchange 事件早于 useEffect 挂载而卡死路由）。
+- 2026-11-04 D-024 仓库公开（GitHub，作品集用途）+ PolyForm Noncommercial 1.0.0（商用受限，负责人指定）；uv.lock/pnpm-lock 起入库（部署可复现构建）；公开前已审计：git 历史无密钥、.env 未跟踪。
