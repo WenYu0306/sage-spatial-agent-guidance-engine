@@ -106,3 +106,23 @@ export async function deviceLogin(config: ScreenConfig): Promise<DeviceIdentity>
     positionX: me.data.position_x, positionY: me.data.position_y,
   };
 }
+
+export const APP_VERSION = "screen-web-0.1.0";
+
+/** 设备心跳（F-19）：启动即报一次，其后每 60s；失败静默（下轮补报）。 */
+export function startHeartbeat(identity: DeviceIdentity): () => void {
+  const beat = async () => {
+    try {
+      await apiFetch(`/api/v1/devices/${identity.deviceId}/heartbeat`, {
+        method: "POST",
+        token: identity.token,
+        body: JSON.stringify({ status: "online", app_version: APP_VERSION }),
+      });
+    } catch {
+      /* 心跳失败不打扰展示；设备状态由下轮修正 */
+    }
+  };
+  void beat();
+  const timer = setInterval(beat, 60_000);
+  return () => clearInterval(timer);
+}

@@ -9,6 +9,7 @@ import {
   deviceLogin,
   invalidateToken,
   readScreenConfig,
+  startHeartbeat,
   type DeviceIdentity,
 } from "./lib/device.ts";
 import { IDLE_MS, nextRoute, type KioskAction, type KioskRoute } from "./lib/kiosk.ts";
@@ -52,6 +53,11 @@ export function App() {
   useEffect(() => {
     boot();
   }, [boot]);
+
+  useEffect(() => {
+    if (!session || session === "error" || session === "missing") return;
+    return startHeartbeat(session);
+  }, [session]);
 
   useEffect(() => {
     if (!config) return;

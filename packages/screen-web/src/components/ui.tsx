@@ -29,5 +29,6 @@ export function Empty({ text }: { text: string }) {
 }
 
 export function KioskShell({ children }: { children: React.ReactNode }) {
-  return <div className="flex h-full flex-col p-10">{children}</div>;
+  // pb-28 给右下角无障碍浮动按钮让位，避免遮挡输入区
+  return <div className="flex h-full flex-col p-10 pb-28">{children}</div>;
 }

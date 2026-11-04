@@ -23,7 +23,7 @@ export async function apiFetch<T>(
   let resp: Response;
   try {
     resp = await fetch(path, { ...init, headers });
-  } catch (cause) {
+  } catch {
     throw new ApiError(0, null, "网络不可达");
   }
   if (resp.status === 401) throw new ApiError(401, 1001, "登录失效");
