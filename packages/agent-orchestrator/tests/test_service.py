@@ -210,8 +210,8 @@ def test_make_checkpointer_prefers_postgres_and_never_silent():
     可用库时必须真 Postgres；不可用时降级也必须发生（函数自身已留日志）。"""
     import os
 
-    from langgraph.checkpoint.memory import InMemorySaver
     from agent_orchestrator.app import make_checkpointer
+    from langgraph.checkpoint.memory import InMemorySaver
 
     dsn = os.environ["DATABASE_URL"]
     saver = make_checkpointer(dsn)
