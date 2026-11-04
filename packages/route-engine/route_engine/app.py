@@ -50,7 +50,7 @@ def route_plan(req: PlanRequest) -> dict:
 
 
 def _node_labels(tenant_code: str, venue_name: str, node_ids: list[int]) -> dict:
-    """节点 → {label, floor}（前端画线与文案需要）。"""
+    """节点 → {label, floor, x, y}（前端画线与文案需要；坐标随 M11/M12 接力复用）。"""
     import os
 
     import psycopg
@@ -59,7 +59,7 @@ def _node_labels(tenant_code: str, venue_name: str, node_ids: list[int]) -> dict
     with psycopg.connect(dsn) as conn, conn.cursor() as cur:
         cur.execute(
             "select n.id, coalesce(p.name, '走廊点(' || n.x::text || ',' || n.y::text || ')'), "
-            "f.name from route_nodes n "
+            "f.name, n.x, n.y from route_nodes n "
             "join floors f on f.id = n.floor_id "
             "join venues v on v.id = n.venue_id "
             "join tenants t on t.id = v.tenant_id "
@@ -67,4 +67,5 @@ def _node_labels(tenant_code: str, venue_name: str, node_ids: list[int]) -> dict
             "where t.code = %s and v.name = %s and n.id = any(%s)",
             (tenant_code, venue_name, node_ids),
         )
-        return {r[0]: {"label": r[1], "floor": r[2]} for r in cur.fetchall()}
+        return {r[0]: {"label": r[1], "floor": r[2], "x": float(r[3]), "y": float(r[4])}
+                for r in cur.fetchall()}

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+import secrets
 import time
 from pathlib import Path
 
@@ -43,6 +44,96 @@ def _sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+ROUTE_TTL_S = 1800  # PRD 872：route_id 缓存 30 分钟，扫码接力不重算
+
+
+class _RouteCache:
+    """route_id → 路线结果：Redis SETEX 为主，内存 TTL 兜底（同 TokenBlacklist 策略）。"""
+
+    _PREFIX = "sage:route:"
+
+    def __init__(self, redis_url: str):
+        self._mem: dict[str, tuple[float, str]] = {}
+        self._redis = None
+        try:
+            import redis
+
+            self._redis = redis.Redis.from_url(
+                redis_url, socket_connect_timeout=1, socket_timeout=1)
+            self._redis.ping()
+        except Exception:
+            self._redis = None
+
+    def put(self, route_id: int, payload: dict, ttl_s: int = ROUTE_TTL_S) -> None:
+        raw = json.dumps(payload, ensure_ascii=False)
+        if self._redis is not None:
+            try:
+                self._redis.setex(f"{self._PREFIX}{route_id}", ttl_s, raw)
+                return
+            except Exception:
+                pass
+        self._mem[str(route_id)] = (time.monotonic() + ttl_s, raw)
+
+    def get(self, route_id: int) -> dict | None:
+        if self._redis is not None:
+            try:
+                raw = self._redis.get(f"{self._PREFIX}{route_id}")
+                if raw:
+                    return json.loads(raw)
+            except Exception:
+                pass
+        item = self._mem.get(str(route_id))
+        if item is None:
+            return None
+        expires_at, raw = item
+        if time.monotonic() >= expires_at:
+            self._mem.pop(str(route_id), None)
+            return None
+        return json.loads(raw)
+
+
+def _node_floor(nodes: dict, node_id) -> str | None:
+    node = nodes.get(str(node_id)) or nodes.get(node_id) or {}
+    return node.get("floor")
+
+
+def _route_payload(route: dict, venue_id: int, route_id: int) -> dict:
+    """PRD 642 结构：summary（floors/transfers 摘要）+ 完整 nodes/segments（大屏直画）。
+
+    route-engine 响应键：node_path、nodes{id:{label,floor,x,y}}、segments{from_id,to_id}。
+    """
+    nodes = route.get("nodes") or {}
+    path = route.get("node_path") or []
+    floors: list[str] = []
+    for nid in path:
+        node = nodes.get(str(nid)) or nodes.get(nid) or {}
+        f = node.get("floor")
+        if f and f not in floors:
+            floors.append(f)
+    transfers = [
+        {"type": s["edge_type"],
+         "from": _node_floor(nodes, s["from_id"]),
+         "to": _node_floor(nodes, s["to_id"])}
+        for s in route.get("segments", []) if s.get("edge_type") != "walk"
+    ]
+
+    def _label(nid) -> str | None:
+        node = nodes.get(str(nid)) or nodes.get(nid) or {}
+        return node.get("label")
+
+    return {
+        "route_id": route_id,
+        "venue_id": venue_id,
+        "start_label": _label(path[0]) if path else None,
+        "goal_label": _label(path[-1]) if path else None,
+        "summary": {"distance_meter": route.get("total_distance_meter"),
+                    "eta_seconds": route.get("total_time_s"),
+                    "floors": floors, "transfers": transfers},
+        "nodes": nodes,
+        "segments": route.get("segments", []),
+    }
+
+
 
 def _emit_event(dsn: str, event: dict) -> None:
     """埋点失败不阻断问答（M9 SDK 的容错包装）。"""
@@ -62,6 +153,7 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
     http_route = httpx.Client(base_url=settings.route_engine_url, timeout=5)
     http_knowledge = httpx.Client(base_url=settings.knowledge_rag_url, timeout=5)
     http_recommender = httpx.Client(base_url=settings.recommender_url, timeout=5)
+    route_cache = _RouteCache(settings.redis_url)
 
     app = FastAPI(title="agent-orchestrator", version="0.1.0")
 
@@ -150,7 +242,9 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
         ctx = ToolContext(
             tenant_id=tenant_id, venue_id=venue_id, tenant_code=TENANT_CODE,
             venue_name=VENUE_NAME, dsn=settings.database_url,
-            http_route=http_route, http_knowledge=http_knowledge,
+            # 测试可经 app.state.http_route 注入内联 transport；生产走 settings 客户端
+            http_route=getattr(app.state, "http_route", None) or http_route,
+            http_knowledge=http_knowledge,
             http_recommender=http_recommender, position=pos,
             prefer_accessible=bool((req.context or {}).get("prefer_accessible")),
         )
@@ -193,6 +287,25 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
                     yield _sse("delta", {"text": piece})
             for card in final.get("cards", []):
                 yield _sse("card", card)
+            route = (final.get("tool_results") or {}).get("route.plan") or {}
+            if status == "ok" and route.get("segments"):
+                route_id = secrets.randbits(31)
+                while route_cache.get(route_id) is not None:
+                    route_id = secrets.randbits(31)
+                payload = _route_payload(route, venue_id, route_id)
+                route_cache.put(route_id, payload)
+                floors = payload["summary"]["floors"]
+                _emit_event(settings.database_url, {
+                    "tenant_id": tenant_id, "venue_id": venue_id,
+                    "event_type": "route_plan", "actor_type": "guest",
+                    "actor_id": req.anonymous_id, "device_id": req.device_id,
+                    "session_id": session_id, "trace_id": trace_id,
+                    "payload": {"route_id": route_id,
+                                "from_floor": floors[0] if floors else None,
+                                "to_floor": floors[-1] if floors else None,
+                                "distance_meter": payload["summary"]["distance_meter"]},
+                })
+                yield _sse("route", payload)
             if final.get("citations"):
                 yield _sse("citations", {"items": final["citations"]})
             if status == "ok" and final.get("degraded"):
@@ -215,6 +328,15 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
                                 "error_code": error_code})
 
         return StreamingResponse(stream(), media_type="text/event-stream")
+
+    @app.get("/api/v1/route/{route_id}")
+    def route_by_id(route_id: int):
+        """手机扫码接力（F-11/PRD 690）：按 route_id 取缓存路线；过期/不存在 → 404/2005。"""
+        payload = route_cache.get(route_id)
+        if not payload:
+            return JSONResponse(status_code=404, content={
+                "error_code": 2005, "message": "路线已过期或不存在，请在大屏重新查询"})
+        return payload
 
     @app.get("/api/v1/agent/sessions/{session_id}/trace")
     def session_trace(session_id: int):
