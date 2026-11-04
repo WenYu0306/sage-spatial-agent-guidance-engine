@@ -34,7 +34,7 @@ cases:
      answer_keys: [B1, 美食市集], notes: "便宜→B1 快餐市集 + 满减券组合"}
   - {id: E14, question: 服务台在哪, intent: facility_nearest,
      tools: [facility.nearest, route.plan], answer_keys: [服务台, F1, 路线], notes: ""}
-  - {id: E15, question: 这家店现在营业吗, intent: venue_info,
+  - {id: E15, question: 这家店现在营业吗, intent: venue_info, preturn: 我想吃火锅,
      tools: [knowledge.query, poi.detail], answer_keys: [营业时间], notes: "依赖前轮指代（这家店）；评测时先注入上一轮 poi 上下文再判"}
   - {id: E16, question: 帮我领那张满 100 减 20 的券, intent: coupon_claim,
      tools: [coupon.claim], answer_keys: [满 100 减 20 美食券, 领取成功],

@@ -287,13 +287,17 @@ def _promotion_list(args: dict, ctx: ToolContext) -> ToolResult:
             params_c.append(params_a[2])
         cur.execute(
             "select c.id, c.title, c.coupon_type, c.threshold, c.value, c.total_qty, "
-            "c.claimed_qty from coupons c where c.tenant_id=%s and c.venue_id=%s "
+            "c.claimed_qty, p.name from coupons c "
+            "left join pois p on p.id = c.poi_id "
+            "where c.tenant_id=%s and c.venue_id=%s "
             f"and c.status='active' and now() between c.start_at and c.end_at "
             f"and c.deleted_at is null {cond_c}",
             params_c,
         )
         cps = [{"coupon_id": r[0], "title": r[1], "type": r[2], "threshold": float(r[3]),
-                "value": float(r[4]), "remaining": r[5] - r[6]} for r in cur.fetchall()]
+                "value": float(r[4]), "remaining": r[5] - r[6],
+                # 关联门店名：回答与幻觉校验白名单的数据依据（回归 E05）
+                "poi_name": r[7]} for r in cur.fetchall()]
     return ToolResult(True, {"activities": acts, "coupons": cps})
 
 

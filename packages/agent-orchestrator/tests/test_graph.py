@@ -184,3 +184,21 @@ def test_trace_clip_always_valid_json():
     assert _json.loads(raw)  # 可解析
     small = _clip({"items": []})
     assert _json.loads(small) == {"items": []}
+
+
+def test_unknown_poi_names_skips_question_echo():
+    """用户话术回声（"附近咖啡店"）不是编造店名——校验器不得误报（回归 E17）。"""
+    from agent_orchestrator.graph import _unknown_poi_names
+    assert _unknown_poi_names("附近咖啡店有这些：汀兰咖啡。", {"汀兰咖啡"}) == []
+
+
+def test_known_poi_names_collects_promotion_store_names():
+    """优惠结果中的关联门店名必须进入白名单（回归 E05：券关联店被误判幻觉）。"""
+    from agent_orchestrator.graph import _known_poi_names
+    names = _known_poi_names({
+        "promotion.list": {"coupons": [
+            {"title": "灶门炭火锅 50 元代金券", "poi_name": "灶门炭火锅"},
+            {"title": "全场满 100 减 20", "poi_name": None},
+        ]},
+    })
+    assert "灶门炭火锅" in names

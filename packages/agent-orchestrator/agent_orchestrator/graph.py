@@ -258,6 +258,9 @@ def _known_poi_names(results: dict) -> set[str]:
                 names.add(item["name"])
         for item in data.get("ranked") or []:
             names.add(item["name"])
+        for c in data.get("coupons") or []:
+            if isinstance(c, dict) and c.get("poi_name"):
+                names.add(c["poi_name"])
         nodes = data.get("nodes") or {}
         names |= {v["label"] for v in nodes.values() if isinstance(v, dict)}
     return names
@@ -276,7 +279,7 @@ def _unknown_poi_names(answer: str, known: set[str]) -> list[str]:
         "玩具店", "眼镜店", "餐厅", "面馆", "日料店", "西餐厅", "美发店", "理发店",
         "花店", "药店", "店铺", "商店", "全馆", "本馆",
     }
-    stop_chars = set("的了是有在去指找哪全这那你我三几几聊说想推荐")
+    stop_chars = set("的了是有在去指找哪全这那你我三几几聊说想推荐附近些")
 
     suspects = []
     for w in {m[-5:] for m in _STORE_SUFFIX.findall(answer)}:

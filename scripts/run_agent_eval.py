@@ -84,10 +84,13 @@ def run_full(args) -> int:
     baseline = yaml.safe_load((REPO / "deploy/seed/data/eval_baseline.yaml").read_text())
     venue_id = int(os.environ.get("EVAL_VENUE_ID", "1"))
 
-    def chat(message):
+    def chat(message, session_id=None):
         events, cur_event, cur_data = [], "", ""
+        body = {"venue_id": venue_id, "message": message}
+        if session_id is not None:
+            body["session_id"] = session_id
         with httpx.stream("POST", orch + "/api/v1/agent/chat",
-                          json={"venue_id": venue_id, "message": message},
+                          json=body,
                           timeout=60) as resp:
             for line in resp.iter_lines():
                 if line.startswith("event: "):
@@ -102,7 +105,15 @@ def run_full(args) -> int:
     rows = []
     for case in baseline["cases"]:
         try:
-            events = chat(case["question"])
+            events = []
+            # 基线 notes 声明"先注入上一轮 poi 上下文再判"的用例（E15 类多轮指代）：
+            # 先发 preturn 建会话，再携 session_id 发主问句，意图解析才见得到历史
+            if case.get("preturn"):
+                events = chat(case["preturn"])
+                sid = next((d.get("session_id") for e, d in events if e == "meta"), None)
+                events = chat(case["question"], session_id=sid)
+            else:
+                events = chat(case["question"])
         except Exception as exc:
             rows.append({"case": case, "actual": "EXC", "chain": [], "err": str(exc)[:50]})
             continue
