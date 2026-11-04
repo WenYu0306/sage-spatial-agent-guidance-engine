@@ -34,6 +34,10 @@ demo_accounts:
     display_name: 野莓茶集店主
     role: merchant
     store: 野莓茶集
+  # M11 设备身份：大屏以 device 角色登录并心跳（绑定本场地 + screen-f1-01 同名设备）
+  - username: screen-f1-01
+    display_name: F1 中庭导览大屏（设备身份）
+    role: device
 
 # M1 演示设备：自然键 (tenant_id, code) upsert；坐标为 SVG 网格（与 POI 同系）。
 devices:

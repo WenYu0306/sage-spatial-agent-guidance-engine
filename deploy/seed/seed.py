@@ -113,7 +113,8 @@ def _seed_rbac(cur, tenant_id: int, venue_id: int, floor_ids: dict, tv: dict,
         if uid is None:
             continue  # 口令未设置时账号未建，跳过绑定
         role_code = acct["role"]
-        scope_venue = venue_id if role_code in ("venue_admin", "venue_editor") else None
+        # device 角色同场地绑定（心跳 scope 依赖 user_roles.venue_id，M11）
+        scope_venue = venue_id if role_code in ("venue_admin", "venue_editor", "device") else None
         merchant_id = None
         if role_code == "merchant" and acct.get("store"):
             merchant_id = poi_id_map.get(acct["store"])
