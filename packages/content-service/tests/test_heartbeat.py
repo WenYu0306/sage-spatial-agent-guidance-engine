@@ -102,7 +102,7 @@ def test_heartbeat_scoped_to_own_venue(client, device_env):
     other_dev = device_env["devs"]["rbac-screen-b"]
     r = client.post(f"/api/v1/devices/{other_dev}/heartbeat",
                     headers=_h(device_env["token"]), json={})
-    assert r.status_code == 404, "不得心跳其他场地的设备"
+    assert r.status_code == 403, "不得心跳其他场地/冒充他机（身份校验先于范围）"
 
 
 def test_heartbeat_rejects_bad_status(client, device_env):
@@ -124,3 +124,27 @@ def test_devices_me_returns_own_row(client, device_env):
 def test_devices_me_forbidden_for_admin(client, tokens):
     r = client.get("/api/v1/devices/me", headers=_h(tokens["rbac_admin"]))
     assert r.status_code == 403
+
+
+def test_heartbeat_cannot_spoof_same_venue_device(client, device_env):
+    """心跳绑定：device_id 必须等于 token 身份（同场地冒充 → 403）。"""
+    import psycopg
+
+    tid = device_env["accounts"]["tid"]
+    with psycopg.connect(device_env["dsn"]) as conn, conn.cursor() as cur:
+        cur.execute(
+            "insert into devices (tenant_id, venue_id, code, name, device_type, status) "
+            "values (%s, %s, 'rbac-screen-c2', '冒充目标', 'screen', 'offline') returning id",
+            (tid, device_env["accounts"]["vid"]))
+        other_id = cur.fetchone()[0]
+        conn.commit()
+    try:
+        r = client.post(f"/api/v1/devices/{other_id}/heartbeat",
+                        headers={"Authorization": f"Bearer {device_env['token']}"}, json={})
+        assert r.status_code == 403, f"同场地冒充他机心跳应 403，实为 {r.status_code}"
+    finally:
+        with psycopg.connect(device_env["dsn"]) as conn, conn.cursor() as cur:
+            cur.execute("delete from devices where id=%s", (other_id,))
+            conn.commit()
+
+

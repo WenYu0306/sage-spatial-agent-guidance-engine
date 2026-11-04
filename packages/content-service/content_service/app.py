@@ -14,7 +14,7 @@ import os
 from typing import Literal
 
 import psycopg
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from platform_core.auth_router import (
     AuthContext,
     AuthRuntime,
@@ -121,6 +121,7 @@ class UserCreate(BaseModel):
     role: str
     password: str = Field(min_length=8)
     status: str = "active"
+    store: str | None = None  # merchant 建号必填（审计 S-3）：锚点门店名绑定
 
 
 class UserPatch(BaseModel):
@@ -131,6 +132,10 @@ class UserPatch(BaseModel):
 def create_app(dsn: str) -> FastAPI:
     runtime = AuthRuntime(dsn=dsn)
     app = FastAPI(title="content-service", version="0.1.0")
+
+    from platform_core.ratelimit import SlidingWindow
+
+    claim_limiter = SlidingWindow(max_events=30, window_s=60)  # P2 审计 S-5
     app.include_router(create_auth_router(runtime))
     install_error_handlers(app)
 
@@ -448,6 +453,15 @@ def create_app(dsn: str) -> FastAPI:
 
             raise AuthError(403, 1003, "活动不存在或不属于当前租户")
         ctx.ensure_venue(row[1])
+        if "merchant" in ctx.roles:
+            # 审计 S-4 归属校验：商户只能操作自己锚点门店的活动
+            from platform_core.auth_router import AuthError
+
+            own = one(
+                "select 1 from pois where id=%s and merchant_id=%s",
+                (row[2], ctx.merchant_id))
+            if not own:
+                raise AuthError(403, 1003, "活动不属于当前商户")
         return row
 
     @app.get("/api/v1/activities")
@@ -581,9 +595,17 @@ def create_app(dsn: str) -> FastAPI:
                           for r in data]}
 
     @app.post("/api/v1/coupons/{coupon_id}/claim")
-    def coupon_claim(coupon_id: int, body: ClaimBody):
+    def coupon_claim(coupon_id: int, body: ClaimBody, request: Request):
         """guest 领券（无登录，anonymous_id 标识）。幂等键 coupon_id:anonymous_id；
-        库存原子扣减（禁止先查后写，PRD 12）；重放返回既有券 duplicate=true。"""
+        库存原子扣减（禁止先查后写，PRD 12）；重放返回既有券 duplicate=true。
+        领取限流（P2 审计 S-5）：anonymous_id+IP 30 次/分钟。
+        """
+        ip = request.client.host if request.client else "anon"
+        if not claim_limiter.allow(ip):  # 按IP：换 anonymous_id 横向扫 ID 也拦（审计 S-5）
+            from fastapi.responses import JSONResponse
+
+            return JSONResponse(status_code=429, content={
+                "error_code": 9002, "message": "领取过于频繁"})
         with psycopg.connect(dsn) as conn, conn.cursor() as cur:
             cur.execute(
                 "update coupons set claimed_qty = claimed_qty + 1 "
@@ -765,8 +787,13 @@ def create_app(dsn: str) -> FastAPI:
                          ctx: AuthContext = Depends(runtime.dependency("device"))):
         """设备心跳（F-19/PRD 733）：更新 last_seen_at/status/app_version，打点 device_active。
 
-        设备账号按 user_roles.venue_id 绑定场地——只能心跳本场地设备（跨场地 404）。
+        设备账号按 user_roles.venue_id 绑定场地——只能心跳本场地设备（跨场地 404）；
+        且 device_id 必须等于 token 携带身份（同场地冒充他机 → 403，审计 S-5）。
         """
+        if ctx.device_id is None or ctx.device_id != device_id:
+            from platform_core.auth_router import AuthError
+
+            raise AuthError(403, 1003, "设备身份与令牌不符")
         row = one(
             "update devices set last_seen_at=now(), status=%s, "
             "app_version=coalesce(%s, app_version) "
@@ -818,10 +845,24 @@ def create_app(dsn: str) -> FastAPI:
 
         if not one("select 1 from roles where code=%s", (body.role,)):
             raise AuthError(403, 1003, "角色不存在")
+        if body.role == "platform_admin" and "platform_admin" not in ctx.roles:
+            raise AuthError(403, 1003, "仅平台管理员可创建平台管理员")  # 审计 S-3 提权拦截
+        merchant_id = None
+        if body.role == "merchant":
+            if not body.store:
+                raise AuthError(403, 1003, "merchant 建号必须绑定门店")  # 审计 S-3
+            mrow = one(
+                "select id from pois where tenant_id=%s and venue_id=%s and name=%s "
+                "and deleted_at is null",
+                (ctx.tenant_id, ctx.venue_id, body.store))
+            if not mrow:
+                raise AuthError(403, 1003, "绑定的门店不存在")
+            merchant_id = mrow[0]
         if one("select 1 from users where tenant_id=%s and username=%s",
                (ctx.tenant_id, body.username)):
             raise AuthError(403, 1003, "用户名已存在")
-        scope_venue = ctx.venue_id if body.role in ("venue_admin", "venue_editor") else None
+        scope_venue = ctx.venue_id if body.role in (
+            "venue_admin", "venue_editor", "device") else None
         with psycopg.connect(dsn) as conn, conn.cursor() as cur:
             cur.execute(
                 "insert into users (tenant_id, username, password_hash, display_name, "
@@ -830,9 +871,9 @@ def create_app(dsn: str) -> FastAPI:
                  body.display_name, body.status))
             uid = cur.fetchone()[0]
             cur.execute(
-                "insert into user_roles (user_id, role_id, venue_id) "
-                "values (%s, (select id from roles where code=%s), %s)",
-                (uid, body.role, scope_venue))
+                "insert into user_roles (user_id, role_id, venue_id, merchant_id) "
+                "values (%s, (select id from roles where code=%s), %s, %s)",
+                (uid, body.role, scope_venue, merchant_id))
             conn.commit()
         runtime.oplog(ctx.tenant_id, ctx.user_id, "create", "user", uid,
                       ctx.trace_id, ctx.ip, diff={"role": body.role})
