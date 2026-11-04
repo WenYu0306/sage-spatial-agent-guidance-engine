@@ -207,6 +207,13 @@ def test_rank_step_receives_same_turn_search_candidates():
     rank_inputs = [s["input"] for s in steps
                    if s["step_type"] == "tool_call" and s["tool_code"] == "recommend.rank"]
     assert rank_inputs, "rank 步骤未执行"
+    if not rank_inputs[0].get("candidates"):
+        # CI 诊断：打印本轮全部工具输出（本地不可复现，环境差异定位用）
+        import json as _json
+
+        for st in steps:
+            if st["step_type"] == "tool_call":
+                print(f"[diag] {st['tool_code']}: {st['output']}")
     assert rank_inputs[0].get("candidates"), "rank 应拿到同轮 search 的候选"
 
 
