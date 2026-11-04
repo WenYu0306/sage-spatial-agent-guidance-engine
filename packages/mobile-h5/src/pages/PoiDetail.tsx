@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@sage/map-render/src/lib/http/api.ts";
-import { Empty, LoadError, Skeleton, TopBar } from "../components/ui.tsx";
+import { LoadError, Skeleton, TopBar } from "../components/ui.tsx";
 import type { RoutePayload } from "../lib/routeShape.ts";
 
 interface PoiDetail {
