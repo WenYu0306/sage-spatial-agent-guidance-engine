@@ -250,3 +250,55 @@ def test_optional_dependency_with_token_still_works(client, runtime, accounts):
               headers={"Authorization": f"Bearer {token}"},
               params={"venue_id": accounts["vid"]})
     assert r.status_code == 200 and "venue_admin" in r.json()["roles"]
+
+
+def test_login_rate_limited_per_ip(client, accounts):
+    """登录 IP 限流（审计 S-6）：同 IP 高频 → 429/9002。"""
+    last = None
+    for i in range(65):
+        last = client.post("/api/v1/auth/login", json={
+            "tenant_code": "shanqueli-demo", "username": "no-such-user",
+            "password": "wrong"})
+    assert last.status_code == 429 and last.json()["error_code"] == 9002
+
+
+def test_locked_account_message_has_no_oracle(client, dsn, accounts):
+    """锁定文案统一（审计 S-7）：锁定后正确口令也返回与失败一致的文案（D-019 防枚举）。"""
+    import psycopg
+    from platform_core.auth import LockoutPolicy, hash_password, register_failure
+    tid = accounts["tid"]
+    with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+        cur.execute("delete from users where username='rbac_locked'")
+        cur.execute(
+            "insert into users (tenant_id, username, password_hash, display_name) "
+            "values (%s, 'rbac_locked', %s, 'x') returning id",
+            (tid, hash_password(PASSWORD)))
+        uid = cur.fetchone()[0]
+        conn.commit()
+    try:
+        for _ in range(6):
+            register_failure(dsn, uid, LockoutPolicy.from_env())
+        from platform_core.auth_router import AuthRuntime
+
+        c = _guest_client(AuthRuntime(dsn=dsn))
+        r = c.post("/api/v1/auth/login", json={
+            "tenant_code": "shanqueli-demo", "username": "rbac_locked",
+            "password": PASSWORD})
+        assert r.status_code == 401
+        assert r.json()["message"] == "租户、账号或口令不正确", "锁定不得有专用文案（oracle）"
+    finally:
+        with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+            cur.execute("delete from users where username='rbac_locked'")
+            conn.commit()
+
+
+def test_optional_venue_enum_rate_limited(client, dsn, accounts):
+    """optional 反查枚举限流（审计 S-8）：同 IP 高频换 ID → 429/9002。
+    用独立 AuthRuntime 实例——限流器状态不与其他测试共享。"""
+    from platform_core.auth_router import AuthRuntime
+
+    c = _guest_client(AuthRuntime(dsn=dsn))
+    last = None
+    for i in range(61):
+        last = c.get("/api/v1/demo/guest-pois", params={"venue_id": 900000 + i})
+    assert last.status_code == 429 and last.json()["error_code"] == 9002

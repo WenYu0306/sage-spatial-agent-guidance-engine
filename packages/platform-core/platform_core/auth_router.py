@@ -81,6 +81,11 @@ class AuthRuntime:
         self.dsn = dsn
         self.blacklist = blacklist or TokenBlacklist()
         self.policy = policy or LockoutPolicy.from_env()
+        # P2 限流（审计 S-6/S-8）：登录爆破与 guest venue 枚举，均按 IP
+        from .ratelimit import SlidingWindow
+
+        self._login_limiter = SlidingWindow(max_events=60, window_s=60)
+        self._guest_enum_limiter = SlidingWindow(max_events=60, window_s=60)
 
     def _authed_ctx(self, request: Request,
                     allowed_roles: tuple[str, ...] = ()) -> AuthContext:
@@ -115,6 +120,9 @@ class AuthRuntime:
 
         def dep(request: Request) -> AuthContext:
             if not request.headers.get("authorization", "").startswith("Bearer "):
+                ip = request.client.host if request.client else "anon"
+                if not self._guest_enum_limiter.allow(ip):
+                    raise AuthError(429, 9002, "请求过于频繁")
                 raw = request.query_params.get(venue_query_key) or ""
                 if not raw.isdigit():
                     raise AuthError(401, 1001, "缺少 Bearer 凭证（guest 需提供 venue_id）")
@@ -209,6 +217,9 @@ def create_auth_router(runtime: AuthRuntime) -> APIRouter:
     @router.post("/api/v1/auth/login")
     def login(body: _LoginRequest, request: Request):
         ip = request.client.host if request.client else None
+        if not runtime._login_limiter.allow(ip or "anon"):
+            return JSONResponse(status_code=429,
+                                content={"error_code": 9002, "message": "请求过于频繁"})
         trace_id = request.headers.get("X-Trace-Id")
         with psycopg.connect(runtime.dsn) as conn, conn.cursor() as cur:
             cur.execute("select id, status from tenants where code=%s",
@@ -225,7 +236,8 @@ def create_auth_router(runtime: AuthRuntime) -> APIRouter:
             if urow and auth.is_locked((urow[0], urow[3], urow[4])):
                 runtime.oplog(trow[0], urow[0], "login", "user", urow[0],
                               trace_id, ip, diff={"result": "locked"})
-                return _deny_401("账号已锁定，请稍后再试")
+                # D-019 防枚举：锁定不得有专用文案（审计 S-7 oracle）
+                return _deny_401("租户、账号或口令不正确")
             if not urow or urow[2] != "active" or not auth.verify_password(
                     body.password, urow[1]):
                 if urow:
