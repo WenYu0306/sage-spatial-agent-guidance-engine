@@ -203,3 +203,18 @@ def test_tool_budget_resets_per_turn():
         last_trace_tools = [s for s in steps
                             if s["step_type"] == "tool_call" and s["message_id"] == last_mid]
     assert last_trace_tools, "第 7 轮应有工具调用记录"
+
+
+def test_make_checkpointer_prefers_postgres_and_never_silent():
+    """回归（审计）：PostgresSaver 构造曾误用被静默换 InMemorySaver——
+    可用库时必须真 Postgres；不可用时降级也必须发生（函数自身已留日志）。"""
+    import os
+
+    from langgraph.checkpoint.memory import InMemorySaver
+    from agent_orchestrator.app import make_checkpointer
+
+    dsn = os.environ["DATABASE_URL"]
+    saver = make_checkpointer(dsn)
+    assert not isinstance(saver, InMemorySaver), "真库可用时不得降级内存"
+    bad = make_checkpointer("postgresql://nobody:nope@127.0.0.1:1/void")
+    assert isinstance(bad, InMemorySaver), "连不上才允许降级"

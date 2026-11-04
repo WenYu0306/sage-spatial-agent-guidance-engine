@@ -52,7 +52,10 @@ def make_checkpointer(dsn: str):
         import psycopg
         from langgraph.checkpoint.postgres import PostgresSaver
 
-        conn = psycopg.connect(dsn)
+        # settings.database_url 是 SQLAlchemy 方言串（+psycopg），psycopg 不认
+        raw = dsn.replace("postgresql+psycopg://", "postgresql://", 1)
+        # setup() 含 CREATE INDEX CONCURRENTLY，不能跑在事务块内（官方要求 autocommit）
+        conn = psycopg.connect(raw, autocommit=True)
         saver = PostgresSaver(conn)
         saver.setup()
         return saver
