@@ -93,11 +93,11 @@ def test_post_events_rejects_unknown_type(client, accounts):
 def test_overview_metrics(client, tokens, accounts, dsn):
     """自灌唯一 ID 事件（不依赖幂等重放的旧行：其 occurred_at 停留在首次灌入时刻，
     跨午夜后本地日期漂移会让"今天"窗口空掉）。"""
+    import zoneinfo
+
     import psycopg
     from platform_core.events import new_event_id
     from psycopg.types.json import Jsonb
-
-    import zoneinfo
 
     with psycopg.connect(dsn) as conn, conn.cursor() as cur:
         cur.execute("select timezone from venues where id=%s", (accounts["vid"],))
