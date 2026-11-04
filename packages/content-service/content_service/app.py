@@ -11,15 +11,17 @@ from __future__ import annotations
 
 import datetime as dt
 import os
+from typing import Literal
 
 import psycopg
-from fastapi import Depends, FastAPI, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from platform_core.auth_router import (
     AuthContext,
     AuthRuntime,
     create_auth_router,
     install_error_handlers,
 )
+from platform_core.events import track
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
 
@@ -90,6 +92,13 @@ class ActPatch(BaseModel):
 
 class ClaimBody(BaseModel):
     anonymous_id: str = Field(min_length=1, max_length=64)
+
+
+class HeartbeatBody(BaseModel):
+    """设备心跳（F-19/PRD 733）：仅 device 角色，整行更新天然幂等。"""
+
+    status: Literal["online", "offline", "maintenance"] = "online"
+    app_version: str | None = Field(default=None, max_length=32)
 
 
 class DocCreate(BaseModel):
@@ -712,6 +721,36 @@ def create_app(dsn: str) -> FastAPI:
                            "device_type": r[3], "status": r[4],
                            "last_seen_at": r[5].isoformat() if r[5] else None,
                            "app_version": r[6], "floor": r[7]} for r in data]}
+
+    @app.post("/api/v1/devices/{device_id}/heartbeat")
+    def device_heartbeat(device_id: int, body: HeartbeatBody,
+                         ctx: AuthContext = Depends(runtime.dependency("device"))):
+        """设备心跳（F-19/PRD 733）：更新 last_seen_at/status/app_version，打点 device_active。
+
+        设备账号按 user_roles.venue_id 绑定场地——只能心跳本场地设备（跨场地 404）。
+        """
+        row = one(
+            "update devices set last_seen_at=now(), status=%s, "
+            "app_version=coalesce(%s, app_version) "
+            "where id=%s and tenant_id=%s and venue_id=%s returning id",
+            (body.status, body.app_version, device_id, ctx.tenant_id, ctx.venue_id))
+        if not row:
+            raise HTTPException(status_code=404, detail="设备不存在或不属于该场地")
+        try:
+            from platform_core.events import new_event_id
+
+            track(dsn, {
+                "event_id": new_event_id(),
+                "tenant_id": ctx.tenant_id, "venue_id": ctx.venue_id,
+                "event_type": "device_active", "actor_type": "device",
+                "device_id": device_id,
+                "payload": {"status": body.status,
+                            "app_version": body.app_version},
+            })
+        except Exception:  # 打点失败不阻断心跳（遥测不破坏主链路）
+            pass
+        return {"data": {"device_id": device_id, "status": body.status,
+                         "app_version": body.app_version}}
 
     @app.get("/api/v1/users")
     def user_list(ctx: AuthContext = Depends(runtime.dependency(
