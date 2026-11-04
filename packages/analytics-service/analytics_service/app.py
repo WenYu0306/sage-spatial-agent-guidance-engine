@@ -12,7 +12,7 @@ import os
 import zoneinfo
 
 import psycopg
-from fastapi import Depends, FastAPI, Query
+from fastapi import Depends, FastAPI, Query, Request
 from platform_core.auth_router import (
     AuthContext,
     AuthRuntime,
@@ -52,6 +52,10 @@ def create_app(dsn: str) -> FastAPI:
     app.include_router(create_auth_router(runtime))
     install_error_handlers(app)
 
+    from platform_core.ratelimit import SlidingWindow
+
+    events_limiter = SlidingWindow(max_events=120, window_s=60)  # P2 审计 S-9
+
     def rows(sql: str, params: tuple = ()) -> list[tuple]:
         with psycopg.connect(dsn) as conn, conn.cursor() as cur:
             cur.execute(sql, params)
@@ -82,11 +86,42 @@ def create_app(dsn: str) -> FastAPI:
         return {"ok": True}
 
     @app.post("/api/v1/events")
-    def post_events(body: EventsBody):
-        """guest/device 直报（无登录，PRD 7.4：全部含 device/guest）；幂等整批处理。"""
-        if len(body.events) > 50:
-            from fastapi.responses import JSONResponse
+    def post_events(request: Request, body: EventsBody):
+        """guest/device 直报（PRD 7.4：全部含 device/guest）；幂等整批处理。
 
+        防伪造（P2 审计 S-9）：tenant_id/venue_id/occurred_at 一律服务端裁定——
+        有 token 按身份；guest 以 body 场地反查（须 active），租户自场地派生。
+        """
+        from fastapi.responses import JSONResponse
+
+        ip = request.client.host if request.client else "anon"
+        if not events_limiter.allow(ip):
+            return JSONResponse(status_code=429, content={
+                "error_code": 9002, "message": "请求过于频繁"})
+        auth_header = request.headers.get("authorization", "")
+        venue_ids = {e.get("venue_id") for e in body.events}
+        if auth_header.startswith("Bearer "):
+            ctx = runtime._authed_ctx(request)
+        else:
+            if len(venue_ids) != 1 or not all(isinstance(v, int) for v in venue_ids):
+                return JSONResponse(status_code=422, content={
+                    "error_code": 1001, "message": "guest 事件必须指向同一场地"})
+            vrow = rows("select id, tenant_id from venues where id=%s and status='active'",
+                        (venue_ids.pop(),))
+            if not vrow:
+                return JSONResponse(status_code=401, content={
+                    "error_code": 1001, "message": "场地不存在或未开放"})
+            from platform_core.auth_router import AuthContext
+
+            ctx = AuthContext(user_id=0, tenant_id=vrow[0][1], roles=["guest"],
+                              venue_id=vrow[0][0], merchant_id=None, device_id=None,
+                              _runtime=runtime, ip=ip)
+        now_iso = dt.datetime.now(dt.timezone.utc).isoformat()
+        for e in body.events:
+            e["tenant_id"] = ctx.tenant_id
+            e["venue_id"] = ctx.venue_id
+            e["occurred_at"] = now_iso
+        if len(body.events) > 50:
             return JSONResponse(status_code=422, content={
                 "error_code": 1001, "message": "单次批量上限 50 条"})
         for ev in body.events:

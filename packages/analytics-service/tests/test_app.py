@@ -181,3 +181,31 @@ def test_overview_counts_events_in_venue_timezone(client, tokens, accounts, dsn)
                            "date_to": local_now.date().isoformat()})
     assert r.status_code == 200
     assert r.json()["metrics"]["ai_query_count"] >= 1, "本地今日 00:30 的事件应计入本地今日"
+
+
+def test_events_server_side_clamp(client, accounts, dsn):
+    """客户端伪造钳制（审计 S-9）：tenant/venue/occurred_at 一律服务端裁定。"""
+    import psycopg
+    from platform_core.events import new_event_id
+
+    clamp_id = f"p2-clamp-{new_event_id()[:8]}"
+    r = client.post("/api/v1/events", json={"events": [{
+        "event_id": clamp_id, "tenant_id": 999, "venue_id": accounts["vid"],
+        "event_type": "ai_query", "actor_type": "guest",
+        "occurred_at": "2030-01-01T00:00:00+00:00", "payload": {}}]})
+    assert r.status_code == 200, r.text
+    with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+        cur.execute("select tenant_id, occurred_at from events where event_id=%s",
+                    (clamp_id,))  # 精确匹配：旧行的 2030 伪时戳会永久占据 desc 首位
+        tid, occurred = cur.fetchone()
+        assert tid == accounts["tid"], "tenant 以服务端裁定（场地反查）"
+        assert occurred.year == dt.datetime.now(dt.timezone.utc).year, "occurred_at 服务端覆盖"
+
+
+def test_events_rate_limited_per_ip(client):
+    last = None
+    for i in range(130):
+        last = client.post("/api/v1/events", json={"events": [{
+            "event_id": f"p2-rl-{i}", "tenant_id": 1, "venue_id": 1,
+            "event_type": "search", "actor_type": "guest", "payload": {}}]})
+    assert last.status_code == 429 and last.json()["error_code"] == 9002
