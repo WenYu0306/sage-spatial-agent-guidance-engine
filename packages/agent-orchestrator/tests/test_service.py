@@ -190,6 +190,7 @@ class FakeRecommendChat:
 def test_rank_step_receives_same_turn_search_candidates():
     """同轮依赖：rank 必须拿到本轮 poi.search 的候选（回归：曾读到冻结 state 而恒空）。"""
     app = create_app(provider=FakeRecommendChat(), checkpointer=None)
+    app.state.http_content = _content_client()  # 测试内自建 app 也要注入 M8（CI 无 8945）
     client = TestClient(app)
     vid, _ = _venue_ids()
     with client.stream(
