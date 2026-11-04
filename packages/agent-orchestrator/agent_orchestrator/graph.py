@@ -112,13 +112,21 @@ def _candidate_ids(state: AgentState) -> list[int]:
     return []
 
 
+def _nearest_poi_id(state: AgentState) -> int | None:
+    """facility.nearest 实际选中的最近设施（同层优先）——路线目标直取它。"""
+    items = (state.get("tool_results") or {}).get("facility.nearest", {}).get("items") or []
+    return items[0]["poi_id"] if items and items[0].get("poi_id") else None
+
+
 _PLANNED_STEPS = {
     # 每步返回 [(tool_code, args), ...]；ctx 从 _ctx(config) 取（修 Key 根因）
     "nearest_and_route": lambda s, c: [
         ("facility.nearest",
          {"facility": s["intent"]["slots"].get("category") or "卫生间"}),
-        ("route.plan",
-         {"to_poi_name": s["intent"]["slots"].get("category") or "卫生间"}),
+        # 惰性步骤：args 依赖前一步输出，执行期以累积 results 现算
+        lambda results: ("route.plan",
+                         {"to_poi_id": _nearest_poi_id({"tool_results": results}),
+                          "to_poi_name": s["intent"]["slots"].get("category") or "卫生间"}),
     ],
     "search_and_rank": lambda s, c: [
         ("poi.search",
@@ -169,7 +177,9 @@ def _tools(state: AgentState, config) -> dict:
         # 步骤 lambda 必须看到本轮已累积的工具结果（否则 rank 恒拿空候选——
         # state 是节点入口的冻结快照，同轮前序步骤结果只存在局部 results）
         view = {**state, "tool_results": results}
-        for code, args in _PLANNED_STEPS[plan_name](view, config):
+        for step in _PLANNED_STEPS[plan_name](view, config):
+            # 步骤可为 callable(results)——跨步骤数据依赖在执行期解析
+            code, args = step(results) if callable(step) else step
             if calls >= MAX_TOOL_CALLS or time.monotonic() > deadline:
                 degraded = True
                 break

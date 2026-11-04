@@ -197,13 +197,25 @@ def _facility_nearest(args: dict, ctx: ToolContext) -> ToolResult:
 def _route_plan(args: dict, ctx: ToolContext) -> ToolResult:
     to_name = args.get("to_poi_name")
     from_name = args.get("from_poi_name")
+    to_poi_id = args.get("to_poi_id")
     with _conn(ctx) as conn, conn.cursor() as cur:
-        cur.execute(
-            "select n.id from pois p join route_nodes n on n.poi_id=p.id "
-            "where p.tenant_id=%s and p.venue_id=%s and p.name=%s",
-            (ctx.tenant_id, ctx.venue_id, to_name or ""),
-        )
-        goal = cur.fetchone()
+        goal = None
+        if to_poi_id:
+            # 上游工具（facility.nearest）已选定的目标直取——按名 ilike 解析会在
+            # 并列 hot_score 的同名设施间随机选层（回归：F1 问厕被指去 B1）
+            cur.execute(
+                "select n.id from pois p join route_nodes n on n.poi_id=p.id "
+                "where p.id=%s and p.tenant_id=%s and p.venue_id=%s",
+                (to_poi_id, ctx.tenant_id, ctx.venue_id),
+            )
+            goal = cur.fetchone()
+        if goal is None and to_name:
+            cur.execute(
+                "select n.id from pois p join route_nodes n on n.poi_id=p.id "
+                "where p.tenant_id=%s and p.venue_id=%s and p.name=%s",
+                (ctx.tenant_id, ctx.venue_id, to_name),
+            )
+            goal = cur.fetchone()
         if not goal and to_name:  # 泛称解析（"电影院"→"巨幕星云影院"）
             cur.execute(
                 "select n.id from pois p join route_nodes n on n.poi_id=p.id "

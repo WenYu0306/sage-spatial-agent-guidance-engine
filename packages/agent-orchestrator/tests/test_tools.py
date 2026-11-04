@@ -165,3 +165,37 @@ def test_fingerprint_dedup(ctx):
 
 def test_unknown_tool_rejected(ctx):
     assert run_tool("no.such", {}, ctx).error_code == 9999
+
+
+def test_route_plan_by_poi_id(ctx):
+    """路线目标支持 poi_id 直取（回归：按名 ilike 在并列 hot_score 时随机选层，
+    用户在 F1 却被指引去 B1 卫生间）。"""
+    import psycopg
+
+    with psycopg.connect(ctx.dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            "select p.id from pois p where p.tenant_id=%s and p.venue_id=%s "
+            "and p.name='F1 卫生间'", (ctx.tenant_id, ctx.venue_id))
+        pid = cur.fetchone()[0]
+    r = run_tool("route.plan", {"to_poi_id": pid,
+                                "from_poi_name": "汀兰咖啡"}, ctx)
+    assert r.ok, r.data
+    labels = {v["label"] for v in r.data["nodes"].values()}
+    assert "F1 卫生间" in labels, f"目标应是 F1 卫生间，实际 {labels}"
+
+
+def test_nearest_and_route_plan_shares_target():
+    """计划步骤：路线目标必须取 facility.nearest 实际选中的 poi（同层优先），
+    不得按名字独立解析（回归：说在 F1 有厕所却指路 B1）。"""
+    from agent_orchestrator.graph import _PLANNED_STEPS
+    view = {"intent": {"slots": {"category": "卫生间", "poi_name": None,
+                                 "scene_tag": None, "need_route": True}},
+            "tool_results": {"facility.nearest": {"items": [
+                {"poi_id": 77, "name": "F1 卫生间", "floor": "F1"},
+                {"poi_id": 31, "name": "B1 卫生间", "floor": "B1"},
+            ]}}}
+    steps = _PLANNED_STEPS["nearest_and_route"](view, None)
+    lazy = steps[-1]
+    assert callable(lazy), "路线步骤应为惰性 callable（依赖前一步输出）"
+    route_args = dict(lazy(view["tool_results"])[1])
+    assert route_args.get("to_poi_id") == 77, f"应直取最近设施的 poi_id，实为 {route_args}"
