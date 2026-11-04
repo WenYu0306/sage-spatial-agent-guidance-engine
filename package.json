@@ -11,5 +11,6 @@
     "eslint-plugin-boundaries": "^5.0.1",
     "typescript-eslint": "^8.0.0",
     "json-schema-to-typescript": "^15.0.4"
-  }
+  },
+  "packageManager": "pnpm@11.2.2"
 }

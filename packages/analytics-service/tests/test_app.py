@@ -90,10 +90,29 @@ def test_post_events_rejects_unknown_type(client, accounts):
     assert r.status_code == 200 and r.json()["error_code"] == 1001, "字典外类型整批拒收"
 
 
-def test_overview_metrics(client, tokens, seeded_events):
+def test_overview_metrics(client, tokens, accounts, dsn):
+    """自灌唯一 ID 事件（不依赖幂等重放的旧行：其 occurred_at 停留在首次灌入时刻，
+    跨午夜后本地日期漂移会让"今天"窗口空掉）。"""
+    import psycopg
+    from psycopg.types.json import Jsonb
+    from platform_core.events import new_event_id
+
+    local_today = dt.datetime.now().astimezone().date().isoformat()
+    stamp = new_event_id()[:8]
+    rows = [("ai_query", 3), ("route_plan", 1), ("coupon_claim", 1)]
+    payload = {"degraded": False}
+    with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+        for ev, n in rows:
+            for i in range(n):
+                cur.execute(
+                    "insert into events (event_id, tenant_id, venue_id, event_type, "
+                    "actor_type, payload, occurred_at) values (%s, %s, %s, %s, 'guest', "
+                    "%s, now())",
+                    (f"ov-{stamp}-{ev}-{i}", accounts["tid"], accounts["vid"], ev,
+                     Jsonb(payload)))
+        conn.commit()
     r = client.get("/api/v1/metrics/overview", headers=_h(tokens["rbac_admin"]),
-                   params={"date_from": dt.date.today().isoformat(),
-                           "date_to": dt.date.today().isoformat()})
+                   params={"date_from": local_today, "date_to": local_today})
     body = r.json()
     assert r.status_code == 200
     assert body["metrics"]["ai_query_count"] >= 3
@@ -129,3 +148,30 @@ def test_merchant_scope_on_own_store_only(client, tokens, accounts):
 
 def test_unauthenticated_401(client):
     assert client.get("/api/v1/metrics/overview").status_code == 401
+
+
+def test_overview_counts_events_in_venue_timezone(client, tokens, accounts, dsn):
+    """午夜回归（PRD 场地时区）：本地今天 00:30 的事件（=UTC 前一天 16:30）
+    必须计入本地"今天"的 overview，而不是被 UTC 分桶漏掉。"""
+    import psycopg
+    from psycopg.types.json import Jsonb
+    from platform_core.events import new_event_id
+
+    local_now = dt.datetime.now().astimezone()  # 运行机本地时区
+    boundary = local_now.replace(hour=0, minute=30, second=0, microsecond=0)
+    if boundary > local_now:
+        boundary -= dt.timedelta(days=1)
+    occurred_utc = boundary.astimezone(dt.timezone.utc)
+    with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+        cur.execute(
+            "insert into events (event_id, tenant_id, venue_id, event_type, actor_type, "
+            "device_id, payload, occurred_at) values (%s, %s, %s, 'ai_query', 'guest', "
+            "null, %s, %s)",
+            (f"tz-{new_event_id()}", accounts["tid"], accounts["vid"],
+             Jsonb({"intent": "poi_search", "degraded": False}), occurred_utc))
+        conn.commit()
+    r = client.get("/api/v1/metrics/overview", headers=_h(tokens["rbac_admin"]),
+                   params={"date_from": local_now.date().isoformat(),
+                           "date_to": local_now.date().isoformat()})
+    assert r.status_code == 200
+    assert r.json()["metrics"]["ai_query_count"] >= 1, "本地今日 00:30 的事件应计入本地今日"

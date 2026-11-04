@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import datetime as dt
 import os
+import zoneinfo
 
 import psycopg
 from fastapi import Depends, FastAPI, Query
@@ -64,6 +65,18 @@ def create_app(dsn: str) -> FastAPI:
             params.append(ctx.venue_id)
         return " and ".join(where), params
 
+    def _venue_tz(ctx: AuthContext) -> zoneinfo.ZoneInfo:
+        """场地时区（PRD venues.timezone）：日期边界/分桶以本地口径，缺省 UTC。"""
+        if ctx.venue_id is not None:
+            row = rows("select timezone from venues where id=%s", (ctx.venue_id,))
+            name = row[0][0] if row and row[0][0] else None
+            if name:
+                try:
+                    return zoneinfo.ZoneInfo(name)
+                except zoneinfo.ZoneInfoNotFoundError:
+                    pass
+        return dt.timezone.utc
+
     @app.get("/health")
     def health() -> dict:
         return {"ok": True}
@@ -97,13 +110,16 @@ def create_app(dsn: str) -> FastAPI:
                  date_from: dt.date | None = None,
                  date_to: dt.date | None = None):
         where, params = _venue_where(ctx)
+        tz = _venue_tz(ctx)
         if date_from:
             where += " and e.occurred_at >= %s"
-            params.append(dt.datetime.combine(date_from, dt.time.min, tzinfo=dt.timezone.utc))
+            params.append(dt.datetime.combine(date_from, dt.time.min,
+                                              tzinfo=tz).astimezone(dt.timezone.utc))
         if date_to:
             where += " and e.occurred_at < %s"
             params.append(dt.datetime.combine(date_to + dt.timedelta(days=1),
-                                              dt.time.min, tzinfo=dt.timezone.utc))
+                                              dt.time.min,
+                                              tzinfo=tz).astimezone(dt.timezone.utc))
         metrics: dict[str, float] = {}
         for code, ev in _COUNT_EVENT.items():
             row = rows(f"select count(*) from events e where {where} "
@@ -134,13 +150,14 @@ def create_app(dsn: str) -> FastAPI:
             return JSONResponse(status_code=200, content={
                 "error_code": 1001, "message": f"未知指标 {code}（11 指标见 /metrics/codes）"})
         where, params = _venue_where(ctx)
-        bucket = "date_trunc('day', e.occurred_at)" if granularity == "day" \
-            else "date_trunc('hour', e.occurred_at)"
+        tzname = str(_venue_tz(ctx))
+        bucket = ("date_trunc('day', e.occurred_at at time zone %s)" if granularity == "day"
+                  else "date_trunc('hour', e.occurred_at at time zone %s)")
         if code in _COUNT_EVENT:
             data = rows(
                 f"select {bucket} as b, count(*) from events e where {where} "
                 "and e.event_type=%s group by b order by b",
-                tuple(params + [_COUNT_EVENT[code]]))
+                tuple([tzname] + params + [_COUNT_EVENT[code]]))
             return {"points": [{"date": str(r[0].date()), "value": r[1]} for r in data]}
         if code in _TOP_EVENT:
             ev, expr = _TOP_EVENT[code]
@@ -148,14 +165,15 @@ def create_app(dsn: str) -> FastAPI:
                 f"select {expr} as label, count(*) from events e where {where} "
                 "and e.event_type=%s and coalesce("
                 + expr + ", '') <> '' group by label order by count(*) desc limit 10",
-                tuple(params + [ev]))
+                tuple(params + [ev]))  # top 榜无时间分桶，不涉 tz 占位
             return {"points": [{"label": r[0], "value": r[1]} for r in data]}
         if code == "handover_rate":
             data = rows(
                 f"select {bucket} as b, "
                 "count(*) filter (where e.event_type='route_handover'), "
                 "count(*) filter (where e.event_type='route_plan') "
-                f"from events e where {where} group by b order by b", tuple(params))
+                f"from events e where {where} group by b order by b",
+                tuple([tzname] + params))
             return {"points": [{"date": str(r[0].date()),
                                 "value": round(r[1] / r[2], 4) if r[2] else 0.0}
                                for r in data]}
