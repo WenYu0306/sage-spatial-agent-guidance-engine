@@ -722,6 +722,21 @@ def create_app(dsn: str) -> FastAPI:
                            "last_seen_at": r[5].isoformat() if r[5] else None,
                            "app_version": r[6], "floor": r[7]} for r in data]}
 
+    @app.get("/api/v1/devices/me")
+    def device_me(ctx: AuthContext = Depends(runtime.dependency("device"))):
+        """设备身份自读（M11）：device_id 由 token 携带（devices.code == username 成对约定）。"""
+        row = one(
+            "select d.id, d.code, d.name, d.venue_id, d.status, d.app_version, d.last_seen_at "
+            "from devices d where d.id=%s and d.tenant_id=%s",
+            (ctx.device_id, ctx.tenant_id))
+        if not row:
+            raise HTTPException(status_code=404,
+                                detail="设备身份未登记（devices.code 须与用户名一致）")
+        return {"data": {"device_id": row[0], "code": row[1], "name": row[2],
+                         "venue_id": row[3], "status": row[4],
+                         "app_version": row[5],
+                         "last_seen_at": row[6].isoformat() if row[6] else None}}
+
     @app.post("/api/v1/devices/{device_id}/heartbeat")
     def device_heartbeat(device_id: int, body: HeartbeatBody,
                          ctx: AuthContext = Depends(runtime.dependency("device"))):

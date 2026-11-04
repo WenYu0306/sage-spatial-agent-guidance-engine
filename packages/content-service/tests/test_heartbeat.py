@@ -37,7 +37,7 @@ def device_env(client, dsn, accounts):
             "insert into user_roles (user_id, role_id, venue_id) "
             "values (%s, (select id from roles where code='device'), %s)", (uid, vid))
         devs = {}
-        for code, v in (("rbac-screen-a", vid), ("rbac-screen-b", other_vid)):
+        for code, v in (("rbac_screen", vid), ("rbac-screen-b", other_vid)):
             cur.execute("delete from devices where tenant_id=%s and code=%s", (tid, code))
             cur.execute(
                 "insert into devices (tenant_id, venue_id, code, name, device_type, status) "
@@ -51,8 +51,8 @@ def device_env(client, dsn, accounts):
     yield {"token": login.json()["access_token"], "devs": devs,
            "accounts": accounts, "dsn": dsn}
     with psycopg.connect(dsn) as conn, conn.cursor() as cur:
-        cur.execute("delete from devices where tenant_id=%s and code like %s",
-                    (tid, "rbac-screen-%"))
+        cur.execute("delete from devices where tenant_id=%s and (code like %s or code like %s)",
+                    (tid, "rbac_screen%", "rbac-screen-%"))
         cur.execute("delete from users where tenant_id=%s and username='rbac_screen'", (tid,))
         cur.execute("delete from venues where tenant_id=%s and name='rbac 隔离场地'", (tid,))
         conn.commit()
@@ -63,7 +63,7 @@ def _h(token: str) -> dict:
 
 
 def test_heartbeat_updates_and_emits_event(client, device_env):
-    dev_id = device_env["devs"]["rbac-screen-a"]
+    dev_id = device_env["devs"]["rbac_screen"]
     r = client.post(f"/api/v1/devices/{dev_id}/heartbeat",
                     headers=_h(device_env["token"]),
                     json={"status": "online", "app_version": "1.0.0-screen"})
@@ -82,14 +82,14 @@ def test_heartbeat_updates_and_emits_event(client, device_env):
 
 
 def test_heartbeat_defaults_to_online(client, device_env):
-    dev_id = device_env["devs"]["rbac-screen-a"]
+    dev_id = device_env["devs"]["rbac_screen"]
     r = client.post(f"/api/v1/devices/{dev_id}/heartbeat",
                     headers=_h(device_env["token"]), json={})
     assert r.status_code == 200 and r.json()["data"]["status"] == "online"
 
 
 def test_heartbeat_requires_device_role(client, device_env, tokens):
-    dev_id = device_env["devs"]["rbac-screen-a"]
+    dev_id = device_env["devs"]["rbac_screen"]
     for name in ("rbac_admin", "rbac_editor", "rbac_merchant"):
         r = client.post(f"/api/v1/devices/{dev_id}/heartbeat",
                         headers=_h(tokens[name]), json={})
@@ -106,7 +106,21 @@ def test_heartbeat_scoped_to_own_venue(client, device_env):
 
 
 def test_heartbeat_rejects_bad_status(client, device_env):
-    dev_id = device_env["devs"]["rbac-screen-a"]
+    dev_id = device_env["devs"]["rbac_screen"]
     r = client.post(f"/api/v1/devices/{dev_id}/heartbeat",
                     headers=_h(device_env["token"]), json={"status": "dancing"})
     assert r.status_code == 422
+
+
+def test_devices_me_returns_own_row(client, device_env):
+    r = client.get("/api/v1/devices/me", headers=_h(device_env["token"]))
+    assert r.status_code == 200, r.text
+    data = r.json()["data"]
+    assert data["code"] == "rbac_screen"
+    assert data["device_id"] == device_env["devs"]["rbac_screen"]
+    assert data["venue_id"] == device_env["accounts"]["vid"]
+
+
+def test_devices_me_forbidden_for_admin(client, tokens):
+    r = client.get("/api/v1/devices/me", headers=_h(tokens["rbac_admin"]))
+    assert r.status_code == 403

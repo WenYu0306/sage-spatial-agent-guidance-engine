@@ -150,9 +150,13 @@ def create_auth_router(runtime: AuthRuntime) -> APIRouter:
                             content={"error_code": 1001, "message": message})
 
     def _load_identity(cur, user_id: int, tenant_id: int):
-        """按库重查角色与范围（刷新/登录共用：角色永不过期于 token 之外）。"""
+        """按库重查角色与范围（刷新/登录共用：角色永不过期于 token 之外）。
+
+        device 角色附带 devices.id（auth.py 约定"device 身份时 device_id 必填"，
+        以 devices.code == users.username 关联——设备账号与设备行同名成对）。
+        """
         cur.execute(
-            "select r.code, ur.venue_id, ur.merchant_id, u.display_name "
+            "select r.code, ur.venue_id, ur.merchant_id, u.display_name, u.username "
             "from users u left join user_roles ur on ur.user_id = u.id "
             "left join roles r on r.id = ur.role_id "
             "where u.id=%s and u.tenant_id=%s and u.status='active'",
@@ -161,8 +165,15 @@ def create_auth_router(runtime: AuthRuntime) -> APIRouter:
         if not rows:
             return None
         roles = [r[0] for r in rows if r[0]]
+        device_id = None
+        if "device" in roles:
+            cur.execute(
+                "select id from devices where tenant_id=%s and code=%s",
+                (tenant_id, rows[0][4]))
+            drow = cur.fetchone()
+            device_id = drow[0] if drow else None
         return {"roles": roles, "venue_id": rows[0][1], "merchant_id": rows[0][2],
-                "display_name": rows[0][3]}
+                "display_name": rows[0][3], "device_id": device_id}
 
     @router.post("/api/v1/auth/login")
     def login(body: _LoginRequest, request: Request):
@@ -198,11 +209,13 @@ def create_auth_router(runtime: AuthRuntime) -> APIRouter:
             ident = _load_identity(cur, uid, tid)
             tokens = auth.issue_tokens(TokenSubject(
                 user_id=uid, tenant_id=tid, roles=ident["roles"],
-                venue_id=ident["venue_id"], merchant_id=ident["merchant_id"]))
+                venue_id=ident["venue_id"], merchant_id=ident["merchant_id"],
+                device_id=ident["device_id"]))
             runtime.oplog(tid, uid, "login", "user", uid, trace_id, ip,
                           diff={"result": "ok"})
             return {**tokens, "display_name": ident["display_name"],
-                    "roles": ident["roles"], "venue_id": ident["venue_id"]}
+                    "roles": ident["roles"], "venue_id": ident["venue_id"],
+                    "device_id": ident["device_id"]}
 
     @router.post("/api/v1/auth/refresh")
     def refresh(body: _RefreshRequest, request: Request):
@@ -219,7 +232,7 @@ def create_auth_router(runtime: AuthRuntime) -> APIRouter:
             tokens = auth.issue_tokens(TokenSubject(
                 user_id=int(payload["sub"]), tenant_id=payload["tenant_id"],
                 roles=ident["roles"], venue_id=ident["venue_id"],
-                merchant_id=ident["merchant_id"]))
+                merchant_id=ident["merchant_id"], device_id=ident["device_id"]))
         runtime.blacklist.add(payload["jti"], exp=payload["exp"])  # 轮换：旧 refresh 作废
         return {**tokens, "display_name": ident["display_name"],
                 "roles": ident["roles"], "venue_id": ident["venue_id"]}
