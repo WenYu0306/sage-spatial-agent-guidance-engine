@@ -1,6 +1,6 @@
 /** 设备会话：环境凭据登录 → token/claims 缓存 → /devices/me 自读身份。 */
 
-import { ApiError, apiFetch } from "./api.ts";
+import { ApiError, apiFetch } from "@sage/map-render/src/lib/http/api.ts";
 
 const TOKEN_KEY = "sage_screen_token";
 

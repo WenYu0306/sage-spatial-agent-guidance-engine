@@ -8,7 +8,7 @@ import { FloorPlan } from "@sage/map-render/src/poipicker/FloorPlan.tsx";
 import { MapStage } from "@sage/map-render/src/poipicker/MapStage.tsx";
 import { KioskShell } from "../components/ui.tsx";
 import type { DeviceIdentity } from "../lib/device.ts";
-import { buildEvent, track } from "../lib/events.ts";
+import { buildEvent, track } from "@sage/map-render/src/lib/http/events.ts";
 import { qrTarget, toRouteData } from "../lib/route.ts";
 import type { RoutePayload } from "../lib/route.ts";
 

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { KioskShell } from "../components/ui.tsx";
 import type { DeviceIdentity } from "../lib/device.ts";
-import { createSSEParser } from "../lib/sse.ts";
+import { createSSEParser } from "@sage/map-render/src/lib/http/sse.ts";
 import type { RoutePayload } from "../lib/route.ts";
 
 const FIRST_EVENT_TIMEOUT_MS = 15_000;
