@@ -7,7 +7,7 @@ import { Empty, LoadError, Skeleton, TopBar } from "../components/ui.tsx";
 import { anonymousId } from "../lib/guest.ts";
 
 interface CouponRow {
-  coupon_id: number;
+  id: number;
   title: string;
   type: string;
   threshold: number | null;
@@ -54,7 +54,7 @@ export function CouponsPage() {
       )}
       <ul className="space-y-2 p-3">
         {(q.data?.items ?? []).map((c) => (
-          <li key={c.coupon_id} className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm">
+          <li key={c.id} className="flex items-center gap-3 rounded-xl bg-white p-3 shadow-sm">
             <div className="flex-1">
               <div className="text-sm font-semibold">{c.title}</div>
               <div className="text-xs text-slate-500">
@@ -64,11 +64,11 @@ export function CouponsPage() {
               </div>
             </div>
             <button
-              onClick={() => void claim(c.coupon_id)}
-              disabled={c.remaining <= 0 || claimState[c.coupon_id] === "已领过"}
+              onClick={() => void claim(c.id)}
+              disabled={c.remaining <= 0 || claimState[c.id] === "已领过"}
               className="rounded-full bg-emerald-600 px-4 py-1.5 text-xs text-white
                          disabled:bg-slate-300">
-              {c.remaining <= 0 ? "已领完" : (claimState[c.coupon_id] ?? "领取")}
+              {c.remaining <= 0 ? "已领完" : (claimState[c.id] ?? "领取")}
             </button>
           </li>
         ))}

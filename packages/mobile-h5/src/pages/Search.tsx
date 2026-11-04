@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Empty, LoadError, Skeleton } from "../components/ui.tsx";
 
 interface PoiRow {
-  poi_id: number;
+  id: number;
   name: string;
   floor: string | null;
   category_code?: string;
@@ -44,8 +44,8 @@ export function SearchPage({ onOpenPoi }: { onOpenPoi: (id: number) => void }) {
       )}
       <ul className="space-y-2 px-3">
         {items.map((p) => (
-          <li key={p.poi_id}>
-            <button onClick={() => onOpenPoi(p.poi_id)}
+          <li key={p.id}>
+            <button onClick={() => onOpenPoi(p.id)}
               className="flex w-full items-center justify-between rounded-xl bg-white p-3 text-left shadow-sm">
               <div>
                 <div className="text-sm font-semibold">{p.name}</div>

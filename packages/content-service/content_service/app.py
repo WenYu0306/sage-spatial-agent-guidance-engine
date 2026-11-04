@@ -567,12 +567,14 @@ def create_app(dsn: str) -> FastAPI:
             params.append(ctx.venue_id)
         data = rows(
             "select c.id, c.title, c.coupon_type, c.threshold, c.value, "
-            "c.total_qty - c.claimed_qty, c.poi_id, c.start_at, c.end_at "
-            "from coupons c where " + " and ".join(where) + " order by c.id",
+            "c.total_qty - c.claimed_qty, c.poi_id, c.start_at, c.end_at, p.name "
+            "from coupons c left join pois p on p.id = c.poi_id "
+            "where " + " and ".join(where) + " order by c.id",
             tuple(params))
         return {"items": [{"id": r[0], "title": r[1], "coupon_type": r[2],
                            "threshold": float(r[3]), "value": float(r[4]),
                            "remaining": r[5], "poi_id": r[6],
+                           "poi_name": r[9],
                            "start_at": r[7].isoformat(), "end_at": r[8].isoformat()}
                           for r in data]}
 
