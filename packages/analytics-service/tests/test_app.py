@@ -94,8 +94,8 @@ def test_overview_metrics(client, tokens, accounts, dsn):
     """自灌唯一 ID 事件（不依赖幂等重放的旧行：其 occurred_at 停留在首次灌入时刻，
     跨午夜后本地日期漂移会让"今天"窗口空掉）。"""
     import psycopg
-    from psycopg.types.json import Jsonb
     from platform_core.events import new_event_id
+    from psycopg.types.json import Jsonb
 
     local_today = dt.datetime.now().astimezone().date().isoformat()
     stamp = new_event_id()[:8]
@@ -154,8 +154,8 @@ def test_overview_counts_events_in_venue_timezone(client, tokens, accounts, dsn)
     """午夜回归（PRD 场地时区）：本地今天 00:30 的事件（=UTC 前一天 16:30）
     必须计入本地"今天"的 overview，而不是被 UTC 分桶漏掉。"""
     import psycopg
-    from psycopg.types.json import Jsonb
     from platform_core.events import new_event_id
+    from psycopg.types.json import Jsonb
 
     local_now = dt.datetime.now().astimezone()  # 运行机本地时区
     boundary = local_now.replace(hour=0, minute=30, second=0, microsecond=0)

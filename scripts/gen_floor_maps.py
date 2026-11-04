@@ -148,8 +148,9 @@ def _shops(shops: list[dict]) -> list[str]:
 
 
 def _badge(x, y, char, color, label) -> list[str]:
-    return [f'<g class="facility">',
-            f'<circle cx="{x:g}" cy="{y:g}" r="12" fill="#ffffff" stroke="{color}" stroke-width="1.5"/>',
+    return ['<g class="facility">',
+            f'<circle cx="{x:g}" cy="{y:g}" r="12" fill="#ffffff"'
+            f' stroke="{color}" stroke-width="1.5"/>',
             _text(x, y + 4.5, char, 12, color, "700"),
             _text(x, y + 28, label, 10.5, "#475569"),
             "</g>"]
@@ -165,8 +166,10 @@ def _facilities(facs: list[dict], floor: str) -> list[str]:
         if cat == "elevator":
             out += ['<g class="facility">',
                     _rect(x - 28, y - 19, 56, 38, "#fef9c3", "#ca8a04", 6, 1.5),
-                    f'<line x1="{x - 28:g}" y1="{y - 19:g}" x2="{x + 28:g}" y2="{y + 19:g}" stroke="#ca8a04" stroke-width="1"/>',
-                    f'<line x1="{x + 28:g}" y1="{y - 19:g}" x2="{x - 28:g}" y2="{y + 19:g}" stroke="#ca8a04" stroke-width="1"/>',
+                    f'<line x1="{x - 28:g}" y1="{y - 19:g}" x2="{x + 28:g}"'
+                    f' y2="{y + 19:g}" stroke="#ca8a04" stroke-width="1"/>',
+                    f'<line x1="{x + 28:g}" y1="{y - 19:g}" x2="{x - 28:g}"'
+                    f' y2="{y + 19:g}" stroke="#ca8a04" stroke-width="1"/>',
                     _text(x, y + 36, "直梯", 11, "#92400e"), "</g>"]
         elif cat == "escalator":
             up = floor != "F2"  # F1 上行 / F2 下行
@@ -175,10 +178,12 @@ def _facilities(facs: list[dict], floor: str) -> list[str]:
             for i in (-16, 0, 16):
                 dy = 4 if up else -4
                 out.append(f'<path d="M {x + i - 6:g} {y + dy:g} L {x + i:g} {y - dy:g} '
-                           f'L {x + i + 6:g} {y + dy:g}" fill="none" stroke="#c2410c" stroke-width="2"/>')
+                           f'L {x + i + 6:g} {y + dy:g}" fill="none" '
+                           f'stroke="#c2410c" stroke-width="2"/>')
             out += [_text(x, y + 28, name.split()[-1], 11, "#9a3412"), "</g>"]
         elif cat == "info_desk":
-            out += ['<g class="facility">', _rect(x - 20, y - 18, 40, 36, "#dcfce7", "#16a34a", 8, 1.5),
+            out += ['<g class="facility">',
+                    _rect(x - 20, y - 18, 40, 36, "#dcfce7", "#16a34a", 8, 1.5),
                     _text(x, y + 5, "服", 13, "#166534", "700"),
                     _text(x, y + 34, "服务台", 10.5, "#475569"), "</g>"]
         elif cat == "toilet":

@@ -59,7 +59,8 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - run: pnpm install --frozen-lockfile
+      # esbuild 二进制经 optionalDependencies 安装，无需 postinstall（与 Dockerfile.admin 同解）
+      - run: pnpm install --frozen-lockfile --ignore-scripts
       - name: node:test（map-render/admin-web/screen-web）
         run: pnpm -r --if-present test
       - name: typecheck（tsc --noEmit）

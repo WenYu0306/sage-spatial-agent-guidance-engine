@@ -10,7 +10,7 @@ help: ## 列出所有目标
 TS_FILES := $(shell find packages -type f \( -name '*.js' -o -name '*.ts' -o -name '*.tsx' \) ! -path '*/generated/*' ! -path '*/node_modules/*' 2>/dev/null)
 
 lint: ## ruff + import-linter + eslint（含跨包 import 检查）
-	uv run ruff check packages deploy
+	uv run ruff check packages deploy scripts
 	uv run lint-imports
 	@if [ -n "$(TS_FILES)" ]; then pnpm exec eslint $(TS_FILES); \
 	else echo "eslint: 前端暂无 JS/TS 文件，跳过（前端代码落地后自动生效）"; fi
