@@ -448,9 +448,14 @@ def _seed_route_graph(
 ) -> None:
     """确定性生成路网：每层走廊 trunk，POI/设施就近接入，电梯/扶梯跨层。
 
+    路网是坐标的派生数据：先清空本场地旧图再重建，坐标变更不会残留死节点。
     楼层间用同一 (category, x, y) 配对；扶梯东（x=850）上行、西（x=350）下行，
     单向且 accessible=false（推车/轮椅走直梯）。
     """
+    cur.execute("delete from route_edges where tenant_id=%s and venue_id=%s",
+                (tenant_id, venue_id))
+    cur.execute("delete from route_nodes where tenant_id=%s and venue_id=%s",
+                (tenant_id, venue_id))
     scale = float(tv["map_layers"]["F1"]["scale_meter"])
     elevations = {f["name"]: float(f["elevation"]) for f in tv["floors"]}
 

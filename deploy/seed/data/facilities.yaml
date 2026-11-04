@@ -1,5 +1,5 @@
-# 公共设施 21 处（与 POI 同表，is_facility 分类区分；坐标对齐真实动线）。
-# 母婴室紧邻同层卫生间（手册 7.2 要求 1）；服务台 F1/F2 设中庭服务岛，B1 设主入口侧。
+# 公共设施 20 处（与 POI 同表，is_facility 分类区分；坐标对齐真实动线）。
+# 母婴室紧邻同层卫生间（手册 7.2 要求 1）；服务台 F1 设中庭服务岛，B1 设主入口侧。
 pois:
   - {name: B1 卫生间, category: toilet, floor: B1, x: 730, y: 410, hours: "08:00-22:00", tags: [卫生间, 无障碍位], hot: 90}
   - {name: B1 直梯, category: elevator, floor: B1, x: 600, y: 200, hours: "08:00-22:00", tags: [直梯, 无障碍], hot: 88}
@@ -20,5 +20,4 @@ pois:
   - {name: F2 直梯, category: elevator, floor: F2, x: 600, y: 200, hours: "08:00-22:00", tags: [直梯, 无障碍], hot: 88}
   - {name: F2 扶梯东, category: escalator, floor: F2, x: 850, y: 400, hours: "08:00-22:00", tags: [扶梯, 下行 F1], hot: 86}
   - {name: F2 扶梯西, category: escalator, floor: F2, x: 350, y: 400, hours: "08:00-22:00", tags: [扶梯, 下行 F1], hot: 86}
-  - {name: F2 服务台, category: info_desk, floor: F2, x: 540, y: 430, hours: "09:00-21:30", tags: [咨询, 失物招领, 广播寻人], hot: 83}
   - {name: F2 ATM, category: atm, floor: F2, x: 470, y: 410, hours: "08:00-22:00", tags: [自助银行], hot: 55}

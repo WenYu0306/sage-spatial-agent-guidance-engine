@@ -7,7 +7,7 @@ pois:
   - {name: 松风中餐厅, category: chinese, x: 485, y: 170, hours: "10:30-21:00", tags: [中餐, 包间, 聚餐], hot: 76}
   - {name: 白桦西餐, category: western, x: 775, y: 170, hours: "11:00-21:30", tags: [西餐, 约会, 晚餐], hot: 79}
   - {name: 三时日料, category: japanese, x: 905, y: 170, hours: "11:00-21:30", tags: [日料, 寿司, 约会], hot: 77}
-  - {name: 麦穗面包坊, category: bakery, x: 1030, y: 170, hours: "09:00-21:30", tags: [烘焙, 甜品], hot: 68}
+  - {name: 麦穗面包坊, category: bakery, x: 85, y: 170, hours: "09:00-21:30", tags: [烘焙, 甜品], hot: 68}
   - {name: 巨幕星云影院, category: cinema, x: 1065, y: 110, hours: "10:30-22:30", tags: [影院, 约会, 亲子], hot: 88, weight: 1.15}
   - {name: 栖枝咖啡, category: coffee_tea, x: 230, y: 330, hours: "10:00-21:30", tags: [咖啡, 安静, 约会], hot: 77}
   - {name: 溪亭咖啡, category: coffee_tea, x: 345, y: 330, hours: "10:00-21:30", tags: [咖啡, 安静, 自习], hot: 71}
