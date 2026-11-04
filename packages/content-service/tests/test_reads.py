@@ -106,7 +106,6 @@ def test_guest_reads_published_only(client, accounts, dsn):
     tid, vid = accounts["tid"], accounts["vid"]
     # 直插一篇草稿 POI
     import psycopg
-
     from platform_core.events import new_event_id
     with psycopg.connect(dsn) as conn, conn.cursor() as cur:
         cur.execute(
