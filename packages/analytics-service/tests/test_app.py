@@ -97,7 +97,13 @@ def test_overview_metrics(client, tokens, accounts, dsn):
     from platform_core.events import new_event_id
     from psycopg.types.json import Jsonb
 
-    local_today = dt.datetime.now().astimezone().date().isoformat()
+    import zoneinfo
+
+    with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+        cur.execute("select timezone from venues where id=%s", (accounts["vid"],))
+        venue_tz = zoneinfo.ZoneInfo(cur.fetchone()[0])
+    # "今天"以场地时区口径（CI runner 是 UTC，与场地差一天）
+    local_today = dt.datetime.now(venue_tz).date().isoformat()
     stamp = new_event_id()[:8]
     rows = [("ai_query", 3), ("route_plan", 1), ("coupon_claim", 1)]
     payload = {"degraded": False}

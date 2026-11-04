@@ -45,6 +45,8 @@ jobs:
         run: |
           uv run alembic -c deploy/migrations/alembic.ini upgrade head
           uv run python deploy/seed/seed.py
+          # pgvector 需灌向量；无 LLM_API_KEY 时 ingest 走 Mock 嵌入（provenance 断言仍可满足）
+          uv run python -m knowledge_rag.ingest
       - name: pytest（含 DB/越权/幂等用例）
         run: uv run pytest -q
 
