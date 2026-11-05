@@ -23,7 +23,6 @@ from pathlib import Path
 import psycopg
 import yaml
 from psycopg.types.json import Jsonb
-
 from spatial_model.geometry import distance_2d
 
 TENANT_CODE = "shanqueli-demo"

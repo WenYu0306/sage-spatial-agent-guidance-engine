@@ -35,3 +35,5 @@
 | 2026-11-05 | 脏场地路线规划 500（无 map_layers） | load_route_graph 异常未按 PRD 降级 | A | test_dirty_data.py（2004 断言） | route-engine/app.py except→2004 |
 | 2026-11-05 | M5 起点解析失败被吞成"缺少起点" | nearest-node HTTPError 无细节即吞 | A | tools.py 起点解析失败消息含 exc | tools.py 消息带原因 |
 | 2026-11-05 | 领券幂等重放被工具判为未领取 | 重放回执无 id 键，工具按 id 判定 | A | test_tools.py::test_coupon_claim_idempotent | tools.py 按 error_code 判定 |
+| 2026-11-06 | 新场地路网 15 个连通分量（跨层不可达） | 导入器把扶梯/电梯插成独立节点，walk 网无边接入 | B | scripts/scene_check.py 路网连通项（修后 2243 节点全连通） | import_mall_scene 3.5 垂直节点吸附最近 2 个 walk 节点 |
+| 2026-11-06 | 导入器二次执行即失败 | 幂等清理对 coupon_claims 用了不存在的 venue_id 列 | A | import_mall_scene 连续重跑两次验证 | 清理改经 coupons 子查询先行 |
