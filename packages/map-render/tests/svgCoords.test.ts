@@ -11,11 +11,11 @@ test("snap rounds to grid step", () => {
 });
 
 test("inBounds enforces viewBox 1200x800 with margin", () => {
-  assert.ok(inBounds(1, 1));
-  assert.ok(inBounds(1199, 799));
-  assert.equal(inBounds(0, 400), false);
-  assert.equal(inBounds(1200, 400), false);
-  assert.equal(inBounds(600, 0), false);
-  assert.equal(inBounds(600, 800), false);
-  assert.equal(inBounds(-5, 400), false);
+  assert.ok(inBounds(1, 1, 1200, 800));
+  assert.ok(inBounds(1199, 799, 1200, 800));
+  assert.equal(inBounds(0, 400, 1200, 800), false);
+  assert.equal(inBounds(1200, 400, 1200, 800), false);
+  assert.equal(inBounds(600, 0, 1200, 800), false);
+  assert.equal(inBounds(600, 800, 1200, 800), false);
+  assert.equal(inBounds(-5, 400, 1200, 800), false);
 });

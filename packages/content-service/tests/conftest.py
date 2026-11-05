@@ -48,9 +48,12 @@ def accounts(dsn):
     with psycopg.connect(dsn) as conn, conn.cursor() as cur:
         cur.execute("select id from tenants where code='shanqueli-demo'")
         tid = cur.fetchone()[0]
-        cur.execute("select id from venues where tenant_id=%s limit 1", (tid,))
+        # 钉定演示场地（M2 导入器会建第二场地，limit 1 无 ORDER BY 会拿到错的）
+        cur.execute("select id from venues where tenant_id=%s "
+                    "and name='山雀里·栖云广场'", (tid,))
         vid = cur.fetchone()[0]
-        cur.execute("select id from pois where tenant_id=%s and name='野莓茶集'", (tid,))
+        cur.execute("select id from pois where name='野莓茶集' "
+                    "and venue_id=%s", (vid,))
         store_poi = cur.fetchone()[0]
         users = {}
         for username, role, store in spec:

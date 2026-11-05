@@ -1,0 +1,6 @@
+{
+  "eval_before": ["全链路通过率：17/20 = 85%（严格判据，LLM 方差带 85-100%）"],
+  "route_nodes_before": 106,
+  "pois_before": 88,
+  "venue_before": "山雀里·栖云广场（手工网格 1200x800 虚拟坐标）"
+}

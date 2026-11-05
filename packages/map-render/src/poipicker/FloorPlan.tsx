@@ -1,7 +1,7 @@
 /** 分层平面图：真实底图（scripts/gen_floor_maps.py 产出，floors.ts 内嵌）+ 点位标记 + 点击拾点。 */
 
 import { useRef } from "react";
-import { FLOOR_SVGS } from "../assets/floors.ts";
+import { FLOOR_SVGS, FLOOR_VIEWBOX } from "../assets/floors.ts";
 import { clientToSvg, inBounds, snap } from "../lib/svgCoords.ts";
 /** 渲染标记只需四个字段；PoiPoint 结构天然满足。 */
 export interface MapMarker {
@@ -46,7 +46,8 @@ export function FloorPlan({ floor, points, draft = null, onPick, overlay }: Prop
     const svg = svgRef.current;
     if (!svg) return;
     const { x, y } = clientToSvg(svg, e.clientX, e.clientY);
-    if (!inBounds(x, y)) return;
+    const vb = (FLOOR_VIEWBOX[floor] ?? "0 0 1200 800").split(" ").map(Number);
+    if (!inBounds(x, y, vb[2], vb[3])) return;
     onPick(snap(x), snap(y));
   }
 
@@ -56,7 +57,7 @@ export function FloorPlan({ floor, points, draft = null, onPick, overlay }: Prop
   return (
     <svg
       ref={svgRef}
-      viewBox="0 0 1200 800"
+      viewBox={FLOOR_VIEWBOX[floor] ?? "0 0 1200 800"}
       onClick={handleClick}
       style={{ width: "100%", display: "block", background: "#f8fafc", borderRadius: 8 }}
     >

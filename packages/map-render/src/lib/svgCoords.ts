@@ -22,7 +22,7 @@ export function snap(v: number, step = 1): number {
   return Math.round(v / step) * step;
 }
 
-/** viewBox 边界检查（本商场底图 1200x800）。 */
-export function inBounds(x: number, y: number, w = 1200, h = 800): boolean {
+/** viewBox 边界检查（宽高由调用方按底图传入）。 */
+export function inBounds(x: number, y: number, w: number, h: number): boolean {
   return x > 0 && x < w && y > 0 && y < h;
 }

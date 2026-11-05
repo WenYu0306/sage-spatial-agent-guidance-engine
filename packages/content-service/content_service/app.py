@@ -472,13 +472,17 @@ def create_app(dsn: str) -> FastAPI:
         where = ["p.tenant_id=%s", "p.deleted_at is null", "p.status='published'"]
         where.append("p.venue_id=%s")
         params.append(venue_id)
+        expanded = _expand_category(ctx.tenant_id, category_code)
+        print(f"[nearest debug] tenant={ctx.tenant_id} venue={venue_id} "
+              f"expanded={expanded} roles={ctx.roles}")
         where.append("p.category_code = any(%s)")
-        params.append(_expand_category(ctx.tenant_id, category_code))
+        params.append(expanded)
         data = rows(
             "select p.id, p.name, p.floor_id, p.position_x, p.position_y, "
             "p.hot_score, f.name from pois p "
             "join floors f on f.id=p.floor_id where " + " and ".join(where),
             tuple(params))
+        print(f"[nearest debug] rows={len(data)}")
         has_position = x is not None and y is not None and floor_id is not None
         items = []
         for r in data:

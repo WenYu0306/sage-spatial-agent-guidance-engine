@@ -48,7 +48,7 @@ def base_ids():
         cur.execute("select id from tenants where code='shanqueli-demo'")
         tid = cur.fetchone()[0]
         cur.execute(
-            "select v.id from venues v join tenants t on t.id=v.tenant_id "
+            "select v.id from venues v join tenants t on t.id=v.tenant_id and v.name='山雀里·栖云广场' "
             "where t.code='shanqueli-demo'"
         )
         vid = cur.fetchone()[0]
