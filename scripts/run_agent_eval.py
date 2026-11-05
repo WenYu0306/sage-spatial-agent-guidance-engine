@@ -148,7 +148,12 @@ def run_full(args) -> int:
             "coupon_claim": "coupon.claim" in chain or poi_hit,
             # 默认判据收紧（审计）：只看链非空会掩盖空结果/失败工具——内容必须命中
         }.get(case["intent"], poi_hit)
-        passed = (actual == case["intent"]) and type_check and done.get("status") == "ok"
+        if case.get("trap"):
+            # 陷阱问句：不得编造 + 状态非 error 即可（意图可能合理偏移）
+            passed = (not hallucinated) and done.get("status") in ("ok", "degraded") \
+                and (poi_hit or actual == case["intent"])
+        else:
+            passed = (actual == case["intent"]) and type_check and done.get("status") == "ok"
         rows.append({"case": case, "actual": actual, "chain": chain,
                      "answer": answer[:26], "passed": passed,
                      "latency": done.get("latency_ms", 0), "hall": hallucinated})

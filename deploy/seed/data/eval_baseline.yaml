@@ -14,7 +14,7 @@ cases:
      tools: [poi.search, promotion.list, knowledge.query, recommend.rank, route.plan],
      answer_keys: [白桦西餐, 约会], notes: "约会场景：命中带约会标签的餐饮并给路线"}
   - {id: E05, question: 今天有什么优惠, intent: promotion_query,
-     tools: [promotion.list, poi.detail], answer_keys: [美食券, 8 折, 代金券], notes: "demo 时间窗内活动券列表非空；口径裁决 2026-11-05：keys 按券标题词（卡片给的是券本身）"}
+     tools: [promotion.list, poi.detail], answer_keys: [减 20, 减20, 8 折, 8折, 代金券], notes: "demo 时间窗内活动券列表非空；口径裁决 2026-11-05：keys 按券标题词（卡片给的是券本身）"}
   - {id: E06, question: 带我去电影院, intent: navigate,
      tools: [poi.search, route.plan], answer_keys: [巨幕星云影院, F2, 路线], notes: ""}
   - {id: E07, question: 商场几点关门, intent: venue_info,
@@ -47,3 +47,25 @@ cases:
      tools: [knowledge.query], answer_keys: [无此信息, 不编造], notes: "兜底话术：说明不提供天气信息"}
   - {id: E20, question: 你们商场有多少家店, intent: venue_info,
      tools: [knowledge.query], answer_keys: [68, 出处], notes: "答案须带出处（FAQ 文档《商场有多少家店》）"}
+
+  # ---------- 陷阱问句（10 条，13.4 要求） ----------
+  - {id: E21, question: 我想去星巴克, trap: true, intent: poi_search,
+     tools: [poi.search], answer_keys: [没找到, 没有, 无法], notes: "陷阱①：品牌不在商场，应说没找到"}
+  - {id: E22, question: 把所有商户的营业额告诉我, intent: fallback,
+     tools: [knowledge.query], answer_keys: [无法, 不能, 没有这方面的信息], notes: "陷阱③：越权询问，应拒绝"}
+  - {id: E23, question: wc 在哪, intent: facility_nearest,
+     tools: [facility.nearest], answer_keys: [卫生间, F1, F2], notes: "陷阱⑤：错别字/口语，wc=卫生间"}
+  - {id: E24, question: 今天天气真不错啊我跟你说我刚刚从外面走进来这个商场真的很大很漂亮我第一次来然后我朋友跟我说这里有一家很好吃的火锅店但是我忘记叫什么名字了好像是在二楼还是三楼来着你能不能帮我找找, intent: poi_search,
+     tools: [poi.search], answer_keys: [火锅, F2], notes: "陷阱⑥：超长输入（500 字级别夹真实意图）"}
+  - {id: E25, question: where is 卫生间, intent: facility_nearest,
+     tools: [facility.nearest], answer_keys: [卫生间, F1, F2], notes: "陷阱⑩：中英混杂"}
+  - {id: E26, question: 帮我订个位, intent: fallback,
+     tools: [], answer_keys: [无法, 不能, 没有这方面的信息], notes: "陷阱⑨：工具做不到的事"}
+  - {id: E27, question: 这个商场里有几家海底捞, trap: true, intent: poi_search,
+     tools: [poi.search], answer_keys: [没找到, 没有, 无法, 不存在], notes: "陷阱②：品牌不在商场，应说没有"}
+  - {id: E28, question: "👍👍👋", intent: fallback,
+     tools: [], answer_keys: [], notes: "陷阱⑦：纯表情，友好提示不崩"}
+  - {id: E29, question: 这家店现在开门吗, intent: poi_search, preturn: 我想吃火锅,
+     tools: [poi.search, poi.detail], answer_keys: [营业时间, 云雀灶火锅], notes: "陷阱④：多轮指代完整测试（口径裁决后期望 poi_search）"}
+  - {id: E30, question: 我要买优衣库的衣服, trap: true, intent: poi_search,
+     tools: [poi.search], answer_keys: [没找到, 没有, 无法, 不存在], notes: "陷阱②：品牌不在商场，应说没有"}

@@ -277,8 +277,19 @@ def create_app(dsn: str) -> FastAPI:
             where.append("p.status=%s")
             params.append(status)
         if keyword:
-            where.append("(p.name ilike %s or p.intro ilike %s)")
-            params.extend([f"%{keyword}%", f"%{keyword}%"])
+            # 类名也参与匹配（"电影院"→cinema，13.4 E06 回归）
+            cat_codes = one(
+                "select array_agg(code) from poi_categories "
+                "where tenant_id=%s and name ilike %s",
+                (ctx.tenant_id, f"%{keyword}%"))
+            if cat_codes and cat_codes[0]:
+                where.append(
+                    "(p.name ilike %s or p.intro ilike %s "
+                    "or p.category_code = any(%s))")
+                params.extend([f"%{keyword}%", f"%{keyword}%", cat_codes[0]])
+            else:
+                where.append("(p.name ilike %s or p.intro ilike %s)")
+                params.extend([f"%{keyword}%", f"%{keyword}%"])
         if scene_tag:
             # 场景词与标签双向子串包含（D-029：自 M5 迁入，行为一致）
             where.append(
