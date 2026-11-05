@@ -29,3 +29,11 @@ bash deploy/scripts/backup.sh          # 建议每日 crontab
 ```
 
 环境变量在服务器 `~/sage/.env.demo`（不在仓库；变量名与 `.env.example` 一致）。
+
+> **P1 演练（2026-11-06）后须知**：
+> 1. 手动执行任何 `docker compose -f deploy/compose.demo.yml ...` 命令时必须带
+>    `SAGE_TAG=<git-sha>`——缺省会回落 `latest` 旧镜像（deploy.sh 始终自动导出，不受影响）。
+> 2. `SAGE_HTTP`（compose 端口映射，默认 127.0.0.1:8080）与 `SAGE_HTTP_PORT`（healthcheck 探测口）
+>    可覆盖宿主端口。
+> 3. 服务器 `.env.demo` 变量名以 `platform_core/llm.py` 实际读取为准
+>    （`LLM_CHAT_MODEL`/`EMBEDDING_MODEL`/`EMBED_DIM`），模板曾经写错为 `LLM_MODEL`。
