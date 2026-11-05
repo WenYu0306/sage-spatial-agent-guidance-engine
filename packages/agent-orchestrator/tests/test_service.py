@@ -88,7 +88,8 @@ def _venue_ids():
     dsn = os.environ["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://", 1)
     with psycopg.connect(dsn) as conn, conn.cursor() as cur:
         cur.execute(
-            "select v.id from venues v join tenants t on t.id=v.tenant_id and v.name='山雀里·栖云广场' "
+            "select v.id from venues v join tenants t on t.id=v.tenant_id "
+            "and v.name='山雀里·栖云广场' "
             "where t.code='shanqueli-demo'"
         )
         return cur.fetchone()[0], dsn
