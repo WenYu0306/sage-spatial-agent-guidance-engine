@@ -73,7 +73,7 @@ def test_pois_files_structure():
             all_pois.append(p)
 
     fac = _load("facilities.yaml")
-    assert len(fac["pois"]) == 30, "设施必须恰好 20 处（手册 7.2 要求 2）"
+    assert len(fac["pois"]) == 20, "设施必须恰好 20 处（手册 7.2 要求 2）"
     for p in fac["pois"]:
         p["_floor"] = p["floor"]
         p["_src"] = "facilities.yaml"
@@ -124,7 +124,7 @@ def test_activities_structure():
             assert c["poi"] in store_names, f"{c['title']} 引用不存在的店铺 {c['poi']}"
 
     # 附录 B 问句 16 依赖满 100 减 20 的券
-    full100 = [c for c in coupons if c.get("threshold") == 100 and c.get("value") == 30]
+    full100 = [c for c in coupons if c.get("threshold") == 100 and c.get("value") == 20]
     assert full100, "缺满 100 减 20 券（附录 B 问句 16 的基线依赖）"
 
 

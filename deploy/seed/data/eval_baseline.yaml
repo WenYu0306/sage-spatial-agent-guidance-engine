@@ -64,7 +64,7 @@ cases:
   - {id: E27, question: 这个商场里有几家海底捞, trap: true, intent: poi_search,
      tools: [poi.search], answer_keys: [没找到, 没有, 无法, 不存在], notes: "陷阱②：品牌不在商场，应说没有"}
   - {id: E28, question: "👍👍👋", intent: fallback,
-     tools: [], answer_keys: [], notes: "陷阱⑦：纯表情，友好提示不崩"}
+     tools: [], answer_keys: [暂时, 服务台, 无法], notes: "陷阱⑦：纯表情，友好提示不崩"}
   - {id: E29, question: 这家店现在开门吗, intent: poi_search, preturn: 我想吃火锅,
      tools: [poi.search, poi.detail], answer_keys: [营业时间, 云雀灶火锅], notes: "陷阱④：多轮指代完整测试（口径裁决后期望 poi_search）"}
   - {id: E30, question: 我要买优衣库的衣服, trap: true, intent: poi_search,
