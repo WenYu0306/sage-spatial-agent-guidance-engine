@@ -8,9 +8,12 @@ for svc in content:8945 route-engine:8942 knowledge-rag:8943 recommender:8944 an
   out=$(docker compose -f deploy/compose.demo.yml exec -T "$name" \
     python -c "import urllib.request as u;print(u.urlopen('http://127.0.0.1:$port/health',timeout=3).read().decode())" 2>&1 | tail -1)
   echo "  $name(/health) → $out"
-  [[ "$out" == *'"ok": true'* ]] || { echo "  ✗ $name 未就绪"; fail=1; }
+  out=${out// /}  # JSONResponse 紧凑输出 {"ok":true}，宽松匹配需去空格
+  # grep -F 固定串匹配：[[ ]] 引号段+glob 混合模式在 macOS bash 3.2 有尾部 * 被转义的 bug
+  echo "$out" | grep -qF '"ok":true' || { echo "  ✗ $name 未就绪"; fail=1; }
 done
-code=$(curl -s -o /dev/null -w "%{http_code}" -m 5 http://127.0.0.1:8080/admin/ || true)
+http_port=${SAGE_HTTP_PORT:-8080}
+code=$(curl -s -o /dev/null -w "%{http_code}" -m 5 "http://127.0.0.1:$http_port/admin/" || true)
 echo "  nginx(/admin/) → HTTP $code"
 [[ "$code" == 200 || "$code" == 302 ]] || fail=1
 exit $fail
