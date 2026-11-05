@@ -17,6 +17,8 @@ ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
 RUN useradd --create-home --shell /usr/sbin/nologin sage
 WORKDIR /app
 COPY --from=builder --chown=sage:sage /app /app
+# ops 容器（migrate/seed/ingest）与 healthcheck 依赖仓库内 deploy/（迁移/种子/脚本）
+COPY --chown=sage:sage deploy/ /app/deploy/
 USER sage
 EXPOSE 8941 8942 8943 8944 8945 8946
 # 命令由 compose 注入：uvicorn <module> --host 0.0.0.0 --port <p>
