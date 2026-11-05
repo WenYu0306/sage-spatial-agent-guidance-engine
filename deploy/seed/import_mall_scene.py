@@ -24,6 +24,8 @@ import psycopg
 import yaml
 from psycopg.types.json import Jsonb
 
+from spatial_model.geometry import distance_2d
+
 TENANT_CODE = "shanqueli-demo"
 VENUE_NAME = "栖云广场·云枢 mall"
 FLOORS = (("B1", -1), ("F1", 1), ("F2", 2))
@@ -107,7 +109,12 @@ def main() -> int:
         row = cur.fetchone()
         if row:
             vid = row[0]
+            # coupon_claims 无 venue_id（经 coupon 关联），须先于 coupons 清理
+            cur.execute("delete from coupon_claims where coupon_id in "
+                        "(select id from coupons where venue_id=%s)", (vid,))
             for table in SCENE_TABLES:
+                if table == "coupon_claims":
+                    continue
                 cur.execute(f"delete from {table} where venue_id=%s", (vid,))
         else:
             vid = cur.execute(
@@ -131,24 +138,30 @@ def main() -> int:
 
         # 3) 路网（waypoint + 扶梯/电梯 kind 节点）与 walk 边
         node_ids: dict[str, dict[str, int]] = {}
+        walk_pts: dict[str, list[tuple[int, float, float]]] = {fl: [] for fl, _ in FLOORS}
+        vert_pts: dict[str, list[tuple[int, float, float]]] = {fl: [] for fl, _ in FLOORS}
         for fl, _ in FLOORS:
             fid = floor_ids[fl]
             node_ids[fl] = {}
             for code, (x, y) in scene[fl]["nw"]["nodes"].items():
-                node_ids[fl][code] = cur.execute(
+                nid = cur.execute(
                     "insert into route_nodes (tenant_id, venue_id, floor_id, node_type, "
                     "x, y, accessible) values (%s, %s, %s, 'waypoint', %s, %s, true) "
                     "returning id", (tid, vid, fid, x, y)).fetchone()[0]
+                node_ids[fl][code] = nid
+                walk_pts[fl].append((nid, float(x), float(y)))
             for ft in scene[fl]["gj"]["features"]:
                 kind = ft["properties"].get("kind")
                 if kind in ("escalator", "elevator"):
                     (x, y) = ft["geometry"]["coordinates"]
-                    node_ids[fl][f"{kind}@{x}:{y}"] = cur.execute(
+                    nid = cur.execute(
                         "insert into route_nodes (tenant_id, venue_id, floor_id, "
                         "node_type, x, y, accessible) "
                         "values (%s, %s, %s, %s, %s, %s, %s) returning id",
                         (tid, vid, fid, kind, x, y,
                          kind == "elevator")).fetchone()[0]
+                    node_ids[fl][f"{kind}@{x}:{y}"] = nid
+                    vert_pts[fl].append((nid, float(x), float(y)))
             for a, b, dist in scene[fl]["nw"]["edges"]:
                 na, nb = node_ids[fl].get(str(a)), node_ids[fl].get(str(b))
                 if na is None or nb is None:
@@ -166,6 +179,33 @@ def main() -> int:
                     (tid, vid, na, nb, dist, dist / 1.2))
             conn.commit()
             print(f"{fl} 路网就绪")
+
+        # 3.5) 垂直节点吸附接入 walk 网：源包的扶梯/电梯是独立点要素，与路网不共享
+        # 节点；不接入则每层各成孤岛（scene_check 路网连通会 FAIL）。每个垂直节点
+        # 连同层最近的 2 个 walk 节点（坐标即米制，scale=1.0，权重口径同 walk 边）。
+        snapped = 0
+        for fl, _ in FLOORS:
+            for vn, vx, vy in vert_pts[fl]:
+                near = sorted(walk_pts[fl],
+                              key=lambda w: distance_2d((w[1], w[2]), (vx, vy)))[:2]
+                for wn, wx, wy in near:
+                    d = distance_2d((wx, wy), (vx, vy))
+                    cur.execute(
+                        "select 1 from route_edges where venue_id=%s and "
+                        "((from_node_id=%s and to_node_id=%s) or "
+                        "(from_node_id=%s and to_node_id=%s)) and edge_type='walk'",
+                        (vid, vn, wn, wn, vn))
+                    if cur.fetchone():
+                        continue
+                    cur.execute(
+                        "insert into route_edges (tenant_id, venue_id, from_node_id, "
+                        "to_node_id, edge_type, distance_meter, weight, accessible, "
+                        "is_bidirectional) values (%s, %s, %s, %s, 'walk', %s, %s, "
+                        "true, true)",
+                        (tid, vid, vn, wn, d, d / 1.2))
+                    snapped += 1
+            conn.commit()
+        print(f"垂直节点吸附完成（新增 walk 边 {snapped} 条）")
 
         # 4) 跨层边：扶梯/电梯三层同位（坐标即配对键）
         made = 0
