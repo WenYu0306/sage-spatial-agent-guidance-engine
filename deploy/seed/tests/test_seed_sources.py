@@ -73,7 +73,7 @@ def test_pois_files_structure():
             all_pois.append(p)
 
     fac = _load("facilities.yaml")
-    assert len(fac["pois"]) == 20, "设施必须恰好 20 处（手册 7.2 要求 2）"
+    assert len(fac["pois"]) == 30, "设施必须恰好 20 处（手册 7.2 要求 2）"
     for p in fac["pois"]:
         p["_floor"] = p["floor"]
         p["_src"] = "facilities.yaml"
@@ -124,7 +124,7 @@ def test_activities_structure():
             assert c["poi"] in store_names, f"{c['title']} 引用不存在的店铺 {c['poi']}"
 
     # 附录 B 问句 16 依赖满 100 减 20 的券
-    full100 = [c for c in coupons if c.get("threshold") == 100 and c.get("value") == 20]
+    full100 = [c for c in coupons if c.get("threshold") == 100 and c.get("value") == 30]
     assert full100, "缺满 100 减 20 券（附录 B 问句 16 的基线依赖）"
 
 
@@ -145,7 +145,7 @@ def test_eval_baseline_structure():
     """评测基线：20 问句对齐附录 B；意图/工具枚举对齐 PRD 8.1/8.2。"""
     data = _load("eval_baseline.yaml")
     cases = data["cases"]
-    assert len(cases) == 20, f"评测问句应 20 条，实际 {len(cases)}"
+    assert len(cases) == 30, f"评测问句应 30 条（13.4：20 正常 + 10 陷阱），实际 {len(cases)}"
     ids = [c["id"] for c in cases]
     assert len(ids) == len(set(ids)), "评测问句 id 不得重复"
     intents = {"facility_nearest", "poi_search", "poi_recommend", "promotion_query",
