@@ -228,15 +228,20 @@ def _generate(state: AgentState, config) -> dict:
     system = (config["configurable"]["prompts_dir"] / "answer_system.txt").read_text(
         encoding="utf-8")
     degraded = state.get("degraded", False)
+    usage_out: dict = {}
+    t0 = time.perf_counter()
     try:
         answer, usage = provider.chat(
             [{"role": "system", "content": system},
              {"role": "user", "content": f"顾客说：{state['message']}\n工具结果：{digest}"}],
             max_tokens=300,
         )
+        if isinstance(usage, dict):
+            usage_out = {"usage": usage}  # token 口径落 trace（A11）
     except Exception:  # Provider 不可用 → 兜底话术（不白屏）
         answer = "我暂时没有这方面的信息，你可以问问商场服务台（F1 层）。"
         degraded = True
+    gen_ms = int((time.perf_counter() - t0) * 1000)
 
     # 幻觉后置校验：收集本轮工具结果中出现过的店名，回答里出现名单外的疑似店名 → 降级为列表卡片
     known_names = _known_poi_names(results)
@@ -253,7 +258,8 @@ def _generate(state: AgentState, config) -> dict:
                 {"suspect": suspect}, {"action": "降级列表卡片"}, "degraded", 0)
 
     _tracer(config, state, "generate", None, {"digest_len": len(digest)},
-            {"answer": answer[:200]}, "degraded" if degraded else "ok", 0)
+            {"answer": answer[:200], **usage_out}, "degraded" if degraded else "ok",
+            gen_ms)
     return {"answer": answer, "cards": cards, "citations": state.get("citations", []),
             "degraded": degraded}
 

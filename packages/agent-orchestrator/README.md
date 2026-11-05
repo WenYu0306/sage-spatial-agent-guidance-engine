@@ -22,6 +22,7 @@ START → intent ──→ tools ──→ rag ──→ rank ──→ generate
 
 - `POST /api/v1/agent/chat`：SSE（meta → delta* → card* → citations → done），请求体按 PRD 7.1；错误 1001/1003/3001/3004
 - `GET /api/v1/agent/sessions/{id}/trace`：完整 trace 步骤（时间线视图消费）
+- `GET /api/v1/agent/stats?hours=24`：监控五指标（AI 成功率/降级率/分步时延/token 用量/trace 完整率），只读聚合 agent_traces；消费端 `python scripts/metrics.py`；无鉴权内网端点（ASSUMPTIONS A6）
 - `python -m uvicorn agent_orchestrator.app:app --port 8941`
 
 ## 如何单独运行（本模块）

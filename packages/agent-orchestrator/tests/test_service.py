@@ -256,3 +256,24 @@ def test_make_checkpointer_prefers_postgres_and_never_silent():
     assert not isinstance(saver, InMemorySaver), "真库可用时不得降级内存"
     bad = make_checkpointer("postgresql://nobody:nope@127.0.0.1:1/void")
     assert isinstance(bad, InMemorySaver), "连不上才允许降级"
+
+
+def test_stats_endpoint_shape(client):
+    """监控五指标（13.6）：窗口内有真实 trace 后，/stats 返回完整口径。
+    前置：上一条测试已产生 trace；本条再造一轮问答保证窗口非空。"""
+    vid, _ = _venue_ids()
+    with client.stream("POST", "/api/v1/agent/chat",
+                       json={"venue_id": vid, "message": "我想吃火锅"}):
+        pass
+    r = client.get("/api/v1/agent/stats", params={"hours": 24})
+    assert r.status_code == 200
+    d = r.json()
+    assert d["window_hours"] == 24
+    assert d["messages"] >= 1, "窗口内应有消息"
+    for k in ("ai_call_success_rate", "degraded_rate", "trace_complete_rate"):
+        assert isinstance(d[k], float) and 0.0 <= d[k] <= 1.0, f"{k} 应为 [0,1] 比率"
+    assert d["ai_call_success_rate"] > 0, "generate 全败不应出现在本夹具下"
+    assert set(d["avg_latency_ms"]) >= {"intent_parse", "generate"}
+    assert all(v >= 0 for v in d["avg_latency_ms"].values())
+    assert d["tokens"]["in"] >= 0 and d["tokens"]["out"] >= 0
+    assert isinstance(d["error_codes"], dict)

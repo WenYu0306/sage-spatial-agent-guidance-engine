@@ -364,6 +364,56 @@ def create_app(provider=None, checkpointer=None, settings: Settings | None = Non
                 "error_code": 2005, "message": "路线已过期或不存在，请在大屏重新查询"})
         return payload
 
+    @app.get("/api/v1/agent/stats")
+    def agent_stats(hours: int = 24):
+        """监控五指标（13.6，ASSUMPTIONS A6/A11）：AI 成功率 / 降级率 / 分步时延 /
+        token 用量 / trace 完整率，只读聚合 agent_traces。无鉴权（内网 demo）。"""
+        hours = max(1, min(hours, 720))
+        with psycopg.connect(settings.database_url) as conn, conn.cursor() as cur:
+            cur.execute(
+                "select count(distinct message_id) from agent_traces "
+                "where created_at > now() - make_interval(hours => %s)", (hours,))
+            messages = cur.fetchone()[0]
+            cur.execute(
+                "select count(*), count(*) filter (where status='ok'), "
+                "count(*) filter (where status='degraded') from agent_traces "
+                "where step_type='generate' "
+                "and created_at > now() - make_interval(hours => %s)", (hours,))
+            gen_total, gen_ok, gen_degraded = cur.fetchone()
+            cur.execute(
+                "select error_code, count(*) from agent_traces where error_code "
+                "is not null and created_at > now() - make_interval(hours => %s) "
+                "group by error_code order by 2 desc", (hours,))
+            error_codes = {str(k): v for k, v in cur.fetchall()}
+            cur.execute(
+                "select step_type, avg(latency_ms)::int from agent_traces "
+                "where created_at > now() - make_interval(hours => %s) group by 1",
+                (hours,))
+            avg_latency = dict(cur.fetchall())
+            cur.execute(
+                "select coalesce(sum((output->'usage'->>'tokens_in')::bigint), 0), "
+                "coalesce(sum((output->'usage'->>'tokens_out')::bigint), 0) "
+                "from agent_traces where output ? 'usage' "
+                "and created_at > now() - make_interval(hours => %s)", (hours,))
+            t_in, t_out = cur.fetchone()
+            cur.execute(
+                "select count(*) from (select message_id from agent_traces "
+                "where created_at > now() - make_interval(hours => %s) "
+                "group by message_id "
+                "having count(*) filter (where step_type='intent_parse') > 0 "
+                "and count(*) filter (where step_type='generate') > 0) t", (hours,))
+            complete = cur.fetchone()[0]
+        return {
+            "window_hours": hours,
+            "messages": messages,
+            "ai_call_success_rate": round(gen_ok / gen_total, 4) if gen_total else 0.0,
+            "degraded_rate": round(gen_degraded / gen_total, 4) if gen_total else 0.0,
+            "error_codes": error_codes,
+            "avg_latency_ms": avg_latency,
+            "tokens": {"in": int(t_in), "out": int(t_out)},
+            "trace_complete_rate": round(complete / messages, 4) if messages else 0.0,
+        }
+
     @app.get("/api/v1/agent/sessions/{session_id}/trace")
     def session_trace(session_id: int):
         with psycopg.connect(settings.database_url) as conn, conn.cursor() as cur:
