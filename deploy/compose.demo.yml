@@ -6,6 +6,11 @@ name: sage
 x-backend: &backend-defaults
   restart: unless-stopped
   env_file: ../.env.demo
+  # compose 网内地址注入（environment 优先于 env_file）；密钥类一律走 env_file，
+  # 禁止 ${VAR} 插值——shell 未 sourced 时插值成空串会覆盖真 key（P1-⑤）。
+  environment:
+    DATABASE_URL: postgresql+psycopg://sage:sage_demo_pw@postgres:5432/sage
+    REDIS_URL: redis://redis:6379/0
   build:
     context: ..
     dockerfile: deploy/docker/Dockerfile.service
@@ -98,14 +103,6 @@ services:
       SVC_ROUTE_ENGINE: http://route-engine:8942
       SVC_KNOWLEDGE_RAG: http://knowledge-rag:8943
       SVC_RECOMMENDER: http://recommender:8944
-      LLM_BASE_URL: ${LLM_BASE_URL}
-      LLM_API_KEY: ${LLM_API_KEY}
-      LLM_MODEL: ${LLM_MODEL}
-      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL}
-      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL}
-      JWT_SECRET: ${JWT_SECRET}
-      SEED_DEMO_ADMIN_PASSWORD: ${SEED_DEMO_ADMIN_PASSWORD}
     healthcheck:
       <<: *hc
       test: ["CMD", "python", "-c", "import urllib.request as u;u.urlopen('http://127.0.0.1:8941/health',timeout=2)"]
@@ -124,7 +121,7 @@ services:
 
   nginx:
     volumes:
-      - ../maps:/srv/sage-maps:ro
+      - ./maps:/srv/sage-maps:ro
 
     build:
       context: ..
@@ -133,7 +130,7 @@ services:
         REGISTRY: ${REGISTRY:-docker.m.daocloud.io/}
     image: sage-nginx:${SAGE_TAG:-latest}
     restart: unless-stopped
-    ports: ["127.0.0.1:8080:80"]
+    ports: ["${SAGE_HTTP:-127.0.0.1:8080}:80"]
     mem_limit: 32m
     depends_on:
       - content
