@@ -37,3 +37,7 @@
 | 2026-11-05 | 领券幂等重放被工具判为未领取 | 重放回执无 id 键，工具按 id 判定 | A | test_tools.py::test_coupon_claim_idempotent | tools.py 按 error_code 判定 |
 | 2026-11-06 | 新场地路网 15 个连通分量（跨层不可达） | 导入器把扶梯/电梯插成独立节点，walk 网无边接入 | B | scripts/scene_check.py 路网连通项（修后 2243 节点全连通） | import_mall_scene 3.5 垂直节点吸附最近 2 个 walk 节点 |
 | 2026-11-06 | 导入器二次执行即失败 | 幂等清理对 coupon_claims 用了不存在的 venue_id 列 | A | import_mall_scene 连续重跑两次验证 | 清理改经 coupons 子查询先行 |
+| 2026-11-06 | nginx 运行时 emerg 拒启 | /static/maps/ location 写在 server 块外（M2 批次写入后从未真跑过 nginx，镜像构建不校验配置） | A | deploy.sh 演练 compose up 失败复现 | admin.conf 挪入 server 块 |
+| 2026-11-06 | 容器内 LLM 调用全 400（全量降级 3001） | .env.demo 模板用幽灵变量 LLM_MODEL——代码读 LLM_CHAT_MODEL，默认值不在 API 支持列表 | A | 容器内 openai SDK 复现 400 | 模板换真名+真值并补 EMBED_DIM |
+| 2026-11-06 | 静态底图全 404 | compose 挂载 ../maps 相对 deploy/ 解析为仓库根/maps（不存在→空目录），应为 ./maps | A | nginx 容器内 ls 挂载目录为空 | compose.demo.yml 挂载路径修正 |
+| 2026-11-06 | deploy.sh 一启动即崩（SHA\xef unbound） | macOS bash 3.2 把 $VAR 紧跟的全角括号首字节吞进变量名；[[ ]] 引号段+glob 混合模式尾部 * 被转义 | B | bash deploy.sh / 匹配单测分别复现 | $VAR 紧贴 CJK 处加花括号；匹配改 grep -qF |
