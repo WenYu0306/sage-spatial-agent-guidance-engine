@@ -79,7 +79,10 @@ def _demo_shop_names() -> dict[str, list[dict]]:
 def main() -> int:
     _load_env()
     ap = argparse.ArgumentParser()
-    ap.add_argument("--pkg", default="/Users/wenyudemac/Documents/dev/SAGE-Spatial Agent Guidance Engine/mall_navigation_v1")
+    ap.add_argument(
+        "--pkg",
+        default="/Users/wenyudemac/Documents/dev/SAGE-Spatial Agent Guidance Engine"
+                "/mall_navigation_v1")
     ap.add_argument("--dsn", default=None)
     args = ap.parse_args()
     dsn = (args.dsn or os.environ.get("DATABASE_URL", "")).replace(
