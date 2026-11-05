@@ -12,8 +12,58 @@ import psycopg
 import pytest
 import httpx
 
-BASE = "http://127.0.0.1:8945/api/v1"
 DSN = None
+
+
+@pytest.fixture(scope="module")
+def content():
+    """内联 content 服务（CI 密闭：不依赖本地 8945）。"""
+    import asyncio
+
+    import httpx as _hx
+    from content_service.app import create_app as _cc
+
+    app = _cc(dsn=_dsn())
+
+    class _Sync(_hx.BaseTransport):
+        def __init__(self, a):
+            self.i = _hx.ASGITransport(app=a)
+
+        def handle_request(self, request):
+            loop = asyncio.new_event_loop()
+            try:
+                resp = loop.run_until_complete(self.i.handle_async_request(request))
+                body = loop.run_until_complete(resp.aread())
+                return _hx.Response(resp.status_code, headers=resp.headers,
+                                    content=body, request=request)
+            finally:
+                loop.close()
+
+    return _hx.Client(transport=_Sync(app), base_url="http://c")
+
+
+@pytest.fixture(scope="module")
+def route_cli():
+    import asyncio
+
+    import httpx as _hx
+    from route_engine.app import app as _ra
+
+    class _Sync(_hx.BaseTransport):
+        def __init__(self, a):
+            self.i = _hx.ASGITransport(app=a)
+
+        def handle_request(self, request):
+            loop = asyncio.new_event_loop()
+            try:
+                resp = loop.run_until_complete(self.i.handle_async_request(request))
+                body = loop.run_until_complete(resp.aread())
+                return _hx.Response(resp.status_code, headers=resp.headers,
+                                    content=body, request=request)
+            finally:
+                loop.close()
+
+    return _hx.Client(transport=_Sync(_ra), base_url="http://r")
 
 
 def _dsn() -> str:
@@ -112,19 +162,19 @@ def _edge(a, b, dist=50.0):
         conn.commit()
 
 
-def _plan(start, goal):
-    r = httpx.post("http://127.0.0.1:8942/route/plan", json={
+def _plan(route_cli, start, goal):
+    r = route_cli.post("/route/plan", json={
         "tenant_code": "shanqueli-demo", "venue_name": "脏数据体检场地",
         "start_node_id": start, "goal_node_id": goal}, timeout=15)
     return r.json()
 
 
 # ---------- ① 店名完全重复 ----------
-def test_01_duplicate_names_listed_not_random(dirty):
+def test_01_duplicate_names_listed_not_random(dirty, content):
     vid, f = dirty["vid"], dirty["floors"]["门诊楼3层"]
     _poi(vid, f, "同名体检科")
     _poi(vid, f, "同名体检科")
-    r = httpx.get(f"{BASE}/pois", params={"venue_id": vid, "keyword": "同名体检科"})
+    r = content.get("/api/v1/pois", params={"venue_id": vid, "keyword": "同名体检科"})
     assert r.status_code == 200
     names = [i["name"] for i in r.json()["items"]]
     assert names.count("同名体检科") >= 2, f"重名店必须全部列出，实为 {names}"
@@ -149,50 +199,50 @@ def test_02_overnight_hours_open_at_1am():
 
 
 # ---------- ③ 营业时间为空 ----------
-def test_03_empty_hours_not_dropped_by_open_now_filter(dirty):
+def test_03_empty_hours_not_dropped_by_open_now_filter(dirty, content):
     vid, f = dirty["vid"], dirty["floors"]["门诊楼3层"]
     pid = _poi(vid, f, "无营业时间商铺", hours=None)
-    r = httpx.get(f"{BASE}/pois", params={"venue_id": vid, "open_now": "true"})
+    r = content.get("/api/v1/pois", params={"venue_id": vid, "open_now": "true"})
     assert r.status_code == 200
     ids = [i["id"] for i in r.json()["items"]]
     assert pid in ids, "空营业时间不得因 open_now 过滤而消失（应视为未知而非关闭）"
 
 
 # ---------- ④ 超长介绍 ----------
-def test_04_very_long_intro(dirty):
+def test_04_very_long_intro(dirty, content):
     vid, f = dirty["vid"], dirty["floors"]["门诊楼3层"]
     pid = _poi(vid, f, "超长介绍商铺", intro="长" * 5000)
-    r = httpx.get(f"{BASE}/pois/{pid}", params={"venue_id": vid})
+    r = content.get(f"/api/v1/pois/{pid}", params={"venue_id": vid})
     assert r.status_code == 200
     assert len(r.json()["intro"]) == 5000, "超长介绍应完整存取（切片在 RAG 层）"
 
 
 # ---------- ⑤ 坐标越界 ----------
-def test_05_out_of_bounds_coords_plan_2003(dirty):
+def test_05_out_of_bounds_coords_plan_2003(dirty, route_cli):
     f = dirty["floors"]["门诊楼3层"]
     n1 = _node(dirty["vid"], f, 600, 400)
     _poi(dirty["vid"], f, "越界商铺", x=-500, y=99999)
     n2 = _node(dirty["vid"], f, -500, 99999)
     _edge(n1, n2)
-    body = _plan(n1, n2)
+    body = _plan(route_cli, n1, n2)
     assert body.get("error_code") in (2003, None), \
         f"越界坐标期望 2003 或可达，实为 {body}"
 
 
 # ---------- ⑥ 某层无垂直交通 ----------
-def test_06_floor_without_vertical_transport(dirty):
+def test_06_floor_without_vertical_transport(dirty, route_cli):
     f3, f2 = dirty["floors"]["门诊楼3层"], dirty["floors"]["急诊2层"]
     n1 = _node(dirty["vid"], f3, 300, 300)
     n2 = _node(dirty["vid"], f3, 400, 300)
     _edge(n1, n2)
     n3 = _node(dirty["vid"], f2, 300, 300)
-    body = _plan(n1, n3)
+    body = _plan(route_cli, n1, n3)
     assert body.get("error_code") == 2003, \
         f"无垂直交通跨层必须 2003，实为 {body}"
 
 
 # ---------- ⑦ 孤岛节点 ----------
-def test_07_island_node_plan_2003(dirty):
+def test_07_island_node_plan_2003(dirty, route_cli):
     f = dirty["floors"]["门诊楼3层"]
     n1 = _node(dirty["vid"], f, 600, 400)
     n2 = _node(dirty["vid"], f, 700, 400)
@@ -202,12 +252,12 @@ def test_07_island_node_plan_2003(dirty):
 
     comps = connected_components([(n, 0, 0) for n in (n1, n2, island)], [(n1, n2)])
     assert sorted(len(c) for c in comps) == [1, 2], "M2 连通分量应检出孤岛"
-    body = _plan(n1, island)
+    body = _plan(route_cli, n1, island)
     assert body.get("error_code") == 2003, f"孤岛期望 2003，实为 {body}"
 
 
 # ---------- ⑧ 库存为 0 与并发不超发 ----------
-def test_08_zero_stock_and_no_oversell(dirty):
+def test_08_zero_stock_and_no_oversell(dirty, content):
     vid = dirty["vid"]
     with psycopg.connect(DSN) as conn, conn.cursor() as cur:
         cur.execute(
@@ -227,14 +277,14 @@ def test_08_zero_stock_and_no_oversell(dirty):
             (vid,))
         one_id = cur.fetchone()[0]
         conn.commit()
-    r = httpx.post(f"{BASE}/coupons/{zero_id}/claim",
+    r = content.post("/api/v1/coupons/" + str(zero_id) + "/claim",
                    json={"anonymous_id": "dirty-01"})
     assert r.status_code == 200 and r.json().get("error_code") == 4002, r.text
 
     import concurrent.futures
 
     def claim(i):
-        return httpx.post(f"{BASE}/coupons/{one_id}/claim",
+        return content.post(f"/api/v1/coupons/{one_id}/claim",
                           json={"anonymous_id": f"dirty-conc-{i}"}).json()
 
     with concurrent.futures.ThreadPoolExecutor(8) as ex:
@@ -252,19 +302,19 @@ def test_08_zero_stock_and_no_oversell(dirty):
 
 
 # ---------- ⑨ 特殊字符 ----------
-def test_09_special_chars_safe(dirty):
+def test_09_special_chars_safe(dirty, content):
     vid, f = dirty["vid"], dirty["floors"]["门诊楼3层"]
     weird = '<script>alert(1)</script>🙄"引号\反斜杠'
     pid = _poi(vid, f, weird)
-    r = httpx.get(f"{BASE}/pois/{pid}", params={"venue_id": vid})
+    r = content.get(f"/api/v1/pois/{pid}", params={"venue_id": vid})
     assert r.status_code == 200
     assert r.json()["name"] == weird, "特殊字符应原样存储（渲染转义是前端职责）"
-    r2 = httpx.get(f"{BASE}/pois", params={"venue_id": vid, "keyword": "<script>"})
+    r2 = content.get("/api/v1/pois", params={"venue_id": vid, "keyword": "<script>"})
     assert r2.status_code == 200, "特殊字符关键词搜索不得 500"
 
 
 # ---------- ⑩ 非标准楼层名 ----------
-def test_10_nonstandard_floor_names(dirty):
+def test_10_nonstandard_floor_names(dirty, route_cli):
     f3, fb = dirty["floors"]["门诊楼3层"], dirty["floors"]["住院部B区"]
     n1 = _node(dirty["vid"], f3, 500, 300)
     n2 = _node(dirty["vid"], fb, 500, 400)
@@ -273,14 +323,14 @@ def test_10_nonstandard_floor_names(dirty):
     _edge(n1, elev3, 20.0)
     _edge(elev3, elevb, 5.0)
     _edge(elevb, n2, 20.0)
-    body = _plan(n1, n2)
+    body = _plan(route_cli, n1, n2)
     assert "error_code" not in body, \
         f"非标准楼层名跨层必须可规划（level 数值驱动），实为 {body}"
     assert body["total_distance_meter"] > 0
 
 
 # ---------- ⑪ 图片 URL 失效 ----------
-def test_11_broken_image_urls_passthrough(dirty):
+def test_11_broken_image_urls_passthrough(dirty, content):
     vid, f = dirty["vid"], dirty["floors"]["门诊楼3层"]
     with psycopg.connect(DSN) as conn, conn.cursor() as cur:
         cur.execute(
@@ -292,14 +342,14 @@ def test_11_broken_image_urls_passthrough(dirty):
             "returning id", (vid, f))
         pid = cur.fetchone()[0]
         conn.commit()
-    r = httpx.get(f"{BASE}/pois/{pid}", params={"venue_id": vid})
+    r = content.get(f"/api/v1/pois/{pid}", params={"venue_id": vid})
     assert r.status_code == 200
     assert r.json()["images"][0]["url"].startswith("https://invalid"), \
         "后端原样透传，占位图由前端渲染（行为约定）"
 
 
 # ---------- ⑫ 5000 条导入 ----------
-def test_12_bulk_5000_pois(dirty):
+def test_12_bulk_5000_pois(dirty, content):
     import time
 
     vid, f = dirty["vid"], dirty["floors"]["门诊楼3层"]
@@ -314,7 +364,7 @@ def test_12_bulk_5000_pois(dirty):
             args)
         conn.commit()
     elapsed = time.monotonic() - t0
-    r = httpx.get(f"{BASE}/pois", params={"venue_id": vid, "keyword": "bulk-",
+    r = content.get("/api/v1/pois", params={"venue_id": vid, "keyword": "bulk-",
                                           "page_size": 100})
     assert r.status_code == 200 and r.json()["total"] >= 5000
     assert elapsed < 30, f"5000 条写入 {elapsed:.1f}s 超时（应分批/<30s）"
