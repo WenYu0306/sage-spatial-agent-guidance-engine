@@ -58,6 +58,11 @@ def nearest_node(req: NearestNodeRequest) -> dict:
 def route_plan(req: PlanRequest) -> dict:
     try:
         nodes, edges, scale = load_route_graph(req.tenant_code, req.venue_name)
+    except RouteError as exc:
+        return {"error_code": exc.code, "message": str(exc)}
+    except Exception:  # 13.2：脏场地（无 map_layers/无路网）曾是 500，按 PRD 降级 2004
+        return {"error_code": 2004, "message": "路网未构建或数据不完整"}
+    try:
         g = build_graph(nodes, edges, scale_meter=scale, accessible_only=req.accessible_only)
         r = plan(g, req.start_node_id, req.goal_node_id, scale_meter=scale)
     except RouteError as exc:

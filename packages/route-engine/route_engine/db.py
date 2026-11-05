@@ -46,11 +46,15 @@ def load_route_graph(tenant_code: str, venue_name: str):
         )
         edges = [EdgeRow(*r[:3], float(r[3]), float(r[4]), r[5], r[6])
                  for r in cur.fetchall()]
+        # 比例尺取该场地任一 map_layers（13.2：不得假设场地必有 level=1 楼层）
         cur.execute(
             "select ml.scale_meter from map_layers ml "
             "join floors f on f.id = ml.floor_id "
-            "where ml.venue_id = %s and f.level = 1",
+            "where ml.venue_id = %s order by f.level limit 1",
             (venue_id,),
         )
-        scale = float(cur.fetchone()[0])
+        scale_row = cur.fetchone()
+        if not scale_row:
+            raise SystemExit(f"场地缺少 map_layers：{venue_name}")
+        scale = float(scale_row[0])
     return nodes, edges, scale

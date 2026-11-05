@@ -28,3 +28,10 @@
 | 2026-11-04 | 多轮评测取错意图/判据恒真 | actual 取会话首条 intent；type_check 含 chain 恒真 | A | （评测脚本级，eval 复跑验证） | run_agent_eval.py |
 | 2026-11-05 | 『电梯』搜不到直梯 | 意图 prompt 无分类字典同义词归一 | B | eval E11（评测级复现） | intent_system.txt 设施词归一 |
 | 2026-11-05 | 登录链路 device_id 从未填充 | _load_identity 未查 devices（auth.py 约定未落地） | A | test_heartbeat.py::test_devices_me_returns_own_row | auth_router _load_identity |
+
+| 2026-11-05 | 跨天营业时段（22:00-02:00）凌晨判停业 | 营业解析不支持 end<=start 的跨午夜跨度；首版合并查又在 21:00 产生假阳性 | B | tests/scenario/test_dirty_data.py::test_02_overnight_hours_open_at_1am | content _open_now 两半拆分算法 |
+| 2026-11-05 | open_now=true 时空营业时间店铺消失 | 过滤把"未知"当"关闭"剔除 | B | test_dirty_data.py::test_03_empty_hours_not_dropped | content open_now 未知保留 |
+| 2026-11-05 | 无 level=1 楼层的场地（医院 3/-2/2）路线规划 500 | M3 scale 查询硬编码 f.level=1 假设 | B | test_dirty_data.py::test_05/06/07/10（场景类全挂） | route-engine/db.py 任取场地 scale |
+| 2026-11-05 | 脏场地路线规划 500（无 map_layers） | load_route_graph 异常未按 PRD 降级 | A | test_dirty_data.py（2004 断言） | route-engine/app.py except→2004 |
+| 2026-11-05 | M5 起点解析失败被吞成"缺少起点" | nearest-node HTTPError 无细节即吞 | A | tools.py 起点解析失败消息含 exc | tools.py 消息带原因 |
+| 2026-11-05 | 领券幂等重放被工具判为未领取 | 重放回执无 id 键，工具按 id 判定 | A | test_tools.py::test_coupon_claim_idempotent | tools.py 按 error_code 判定 |

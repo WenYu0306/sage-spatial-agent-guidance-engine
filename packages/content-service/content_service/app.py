@@ -29,13 +29,34 @@ WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
 
 def _open_now(bh: dict, now: dt.datetime) -> bool:
+    """营业判定，支持跨天时段（22:00-02:00）。
+
+    跨天段拆两半：今晚的前半夜（now>=start，挂今天条目）查得到；
+    昨晚的后半夜（now<=end，挂昨天条目）也查得到。21:00 不会误判
+    昨晚的跨天段（13.2 深测发现首版合并查的假阳性）。
+    """
+    t = now.time()
     today = now.strftime("%a").lower()[:3]
+    yesterday = (now - dt.timedelta(days=1)).strftime("%a").lower()[:3]
+
     for span in (bh or {}).get(today) or []:
         try:
             start, end = span.split("-")
-            if (dt.time.fromisoformat(start) <= now.time()
-                    <= dt.time.fromisoformat(end)):
-                return True
+            start_t, end_t = dt.time.fromisoformat(start), dt.time.fromisoformat(end)
+            if start_t <= end_t:
+                if start_t <= t <= end_t:
+                    return True
+            elif t >= start_t:
+                return True  # 今晚跨天段的前半夜
+        except ValueError:
+            continue
+
+    for span in (bh or {}).get(yesterday) or []:
+        try:
+            start, end = span.split("-")
+            start_t, end_t = dt.time.fromisoformat(start), dt.time.fromisoformat(end)
+            if start_t > end_t and t <= end_t:
+                return True  # 昨晚跨天段的后半夜（凌晨）
         except ValueError:
             continue
     return False
@@ -274,8 +295,14 @@ def create_app(dsn: str) -> FastAPI:
         if open_now:
             bh_rows = rows("select id, business_hours " + base, tuple(params))
             now = dt.datetime.now()
-            keep = {r[0] for r in bh_rows
-                    if _open_now(r[1] if isinstance(r[1], dict) else {}, now)}
+            # 未知营业时间（无任何星期条目）按"未知"保留，不因过滤消失（13.2 ③）
+            keep = {
+                r[0] for r in bh_rows
+                if _open_now(r[1] if isinstance(r[1], dict) else {}, now)
+                or not any((r[1] if isinstance(r[1], dict) else {}).get(d)
+                           for d in ("mon", "tue", "wed", "thu",
+                                     "fri", "sat", "sun"))
+            }
             if not keep:
                 return {"items": [], "total": 0}
             base += f" and p.id in ({','.join(map(str, sorted(keep)))})"
