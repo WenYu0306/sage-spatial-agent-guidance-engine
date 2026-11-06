@@ -14,9 +14,9 @@ import { qrTarget, toRouteData } from "../lib/route.ts";
 import type { RoutePayload } from "../lib/route.ts";
 
 const LINE_COLOR: Record<string, string> = {
-  walk: "#38bdf8",
-  elevator: "#fb923c",
-  escalator: "#c084fc",
+  walk: "#44403c",
+  elevator: "#c2410c",
+  escalator: "#9333ea",
 };
 
 function overlayFor(route: RouteData, floor: string) {
@@ -28,12 +28,36 @@ function overlayFor(route: RouteData, floor: string) {
           stroke={LINE_COLOR[l.edge_type] ?? "#38bdf8"} strokeWidth={9}
           strokeLinecap="round" opacity={0.9} />
       ))}
+      {(() => {
+        const first = route.segments[0];
+        const last = route.segments[route.segments.length - 1];
+        if (!first || !last) return null;
+        const pts = [
+          { node: route.nodes[first.from], goal: false },
+          { node: route.nodes[last.to], goal: true },
+        ];
+        return pts.filter((p) => p.node && p.node.floor === floor).map((p, idx) => (
+          <g key={`endpoint-${idx}`}>
+            {p.goal ? (
+              <>
+                <circle cx={p.node.x} cy={p.node.y} r={18} fill="#c2410c" stroke="#ffffff" strokeWidth={4} />
+                <circle cx={p.node.x} cy={p.node.y} r={6} fill="#ffffff" />
+              </>
+            ) : (
+              <>
+                <circle cx={p.node.x} cy={p.node.y} r={16} fill="#ffffff" stroke="#44403c" strokeWidth={4} />
+                <circle cx={p.node.x} cy={p.node.y} r={5} fill="#c2410c" />
+              </>
+            )}
+          </g>
+        ));
+      })()}
       {badges.map((b) => (
         <g key={`${b.x},${b.y},${b.to_floor}`}>
           <circle cx={b.x} cy={b.y} r={20}
-            fill={LINE_COLOR[b.edge_type] ?? "#fb923c"} opacity={0.92} />
-          <text x={b.x} y={b.y + 7} fontSize={22} textAnchor="middle" fill="#0b1220">⇅</text>
-          <text x={b.x} y={b.y + 44} fontSize={19} textAnchor="middle" fill="#e2e8f0">
+            fill={LINE_COLOR[b.edge_type] ?? "#c2410c"} opacity={0.92} />
+          <text x={b.x} y={b.y + 7} fontSize={22} textAnchor="middle" fill="#ffffff">⇅</text>
+          <text x={b.x} y={b.y + 44} fontSize={19} textAnchor="middle" fill="#44403c">
             {b.edge_type === "elevator" ? "直梯" : "扶梯"}→{b.to_floor}
           </text>
         </g>
@@ -119,9 +143,10 @@ export function RoutePage({
               const a = route.nodes[s.from];
               const b = route.nodes[s.to];
               const active = a?.floor === floor || b?.floor === floor;
+              const band = { B1: "border-l-floor-b1", F1: "border-l-floor-f1", F2: "border-l-floor-f2" }[a?.floor ?? ""] ?? "border-l-rule";
               return (
                 <li key={i}
-                  className={`rounded-xl border px-4 py-3 text-xl ${active
+                  className={`rounded-xl border border-l-4 px-4 py-3 text-xl ${band} ${active
                     ? "border-ink/30 bg-paper-3 text-ink" : "border-transparent bg-paper-2/60 text-muted"}`}>
                   <span className={`font-semibold ${s.edge_type === "walk" ? "text-ink-2" : "text-accent-deep"}`}>
                     [{EDGE_LABEL[s.edge_type] ?? s.edge_type}]
