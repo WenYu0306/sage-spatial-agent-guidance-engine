@@ -132,7 +132,13 @@ def create_app(dsn: str) -> FastAPI:
                 return JSONResponse(status_code=200, content={
                     "error_code": 1001,
                     "message": f"未知事件类型：{ev.get('event_type')}（PRD 15 字典）"})
-        result = track_batch(dsn, body.events)
+        try:
+            result = track_batch(dsn, body.events)
+        except ValueError as exc:
+            # 审查 blocking#7：SDK 校验失败（缺 event_id/actor_type 等）必须以
+            # PRD 错误信封返回，不允许 psycopg 异常直落 500 泄堆栈。
+            return JSONResponse(status_code=422, content={
+                "error_code": 1001, "message": str(exc)})
         return {**result, "received": len(body.events)}
 
     @app.get("/api/v1/metrics/codes")

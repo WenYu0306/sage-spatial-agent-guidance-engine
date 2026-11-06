@@ -34,6 +34,14 @@ returning id
 def _normalize(event: dict) -> dict:
     if event.get("event_type") not in EVENT_TYPES:
         raise ValueError(f"未知事件类型：{event.get('event_type')}（PRD 15 字典）")
+    # 审查 blocking#7：event_id/actor_type 表级 NOT NULL 且无默认填充，
+    # 缺失/非法曾直落 psycopg 500——统一前置校验，调用方转错误信封。
+    event_id = event.get("event_id")
+    if not isinstance(event_id, str) or not event_id or len(event_id) > 64:
+        raise ValueError("event_id 必须为 ≤64 字符的非空字符串（幂等键）")
+    actor_type = event.get("actor_type")
+    if not isinstance(actor_type, str) or not actor_type or len(actor_type) > 16:
+        raise ValueError("actor_type 必须为 ≤16 字符的非空字符串")
     filled = {
         "subject_type": None, "subject_id": None, "actor_id": None,
         "device_id": None, "floor_id": None, "session_id": None,

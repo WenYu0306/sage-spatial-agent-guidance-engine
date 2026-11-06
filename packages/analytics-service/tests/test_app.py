@@ -149,6 +149,23 @@ def test_traffic_by_hour_timeseries_both_grains(client, tokens, seeded_events):
         assert all("date" in p and "value" in p for p in body["points"])
 
 
+def test_events_missing_required_fields_use_error_envelope(client, accounts):
+    """审查 blocking#7：events 体缺 event_id/actor_type 曾直落 500；
+    必须返回 422 + error_code 信封（PRD 第 10 节，不泄漏堆栈）。"""
+    from platform_core.events import new_event_id
+
+    no_id = {"venue_id": accounts["vid"], "event_type": "search", "actor_type": "guest"}
+    r = client.post("/api/v1/events", json={"events": [no_id]})
+    assert r.status_code == 422, r.text
+    assert r.json()["error_code"] == 1001, r.text
+
+    no_actor = {"venue_id": accounts["vid"], "event_type": "search",
+                "event_id": f"audit-{new_event_id()[:8]}"}
+    r2 = client.post("/api/v1/events", json={"events": [no_actor]})
+    assert r2.status_code == 422, r2.text
+    assert r2.json()["error_code"] == 1001, r2.text
+
+
 def test_all_eleven_metric_codes_registered(client, tokens):
     r = client.get("/api/v1/metrics/codes", headers=_h(tokens["rbac_admin"]))
     assert set(r.json()["codes"]) == set(METRICS)
