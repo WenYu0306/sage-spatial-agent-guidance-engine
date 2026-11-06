@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { decodeJwtPayload, isRoleAllowed, tokenStore } from "../src/lib/auth.ts";
-import { ApiError, mapResponse } from "../src/lib/api.ts";
+import { ApiError, mapResponse, setUnauthorizedHandler } from "../src/lib/api.ts";
 import { validatePoiForm, validateLoginForm } from "../src/lib/validate.ts";
 
 // HS256 无签名校验的 payload（demo 用途：仅解码展示，鉴权在服务端）
@@ -42,6 +42,28 @@ test("mapResponse：业务错误包络 → ApiError", async () => {
   const ok = new Response(JSON.stringify({ items: [] }), { status: 200 });
   const body = await mapResponse<{ items: string[] }>(ok);
   assert.deepEqual(body.items, []);
+});
+
+test("mapResponse 把非 JSON 响应包装成 ApiError（审查 D13）", async () => {
+  const resp = new Response("<html>502 Bad Gateway</html>", { status: 502 });
+  await assert.rejects(
+    () => mapResponse(resp),
+    (e: unknown) => e instanceof ApiError && e.status === 502,
+  );
+});
+
+test("mapResponse 对 401 非 JSON 响应仍触发自动登出（审查 D13）", async () => {
+  let fired = false;
+  setUnauthorizedHandler(() => {
+    fired = true;
+  });
+  try {
+    const resp = new Response("<html>expired</html>", { status: 401 });
+    await assert.rejects(() => mapResponse(resp), ApiError);
+    assert.equal(fired, true, "401 即使 body 非 JSON 也必须触发登出回调");
+  } finally {
+    setUnauthorizedHandler(() => {});
+  }
 });
 
 test("validateLoginForm：必填校验", () => {

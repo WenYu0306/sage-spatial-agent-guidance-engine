@@ -21,7 +21,16 @@ export function setUnauthorizedHandler(fn: () => void): void {
 
 export async function mapResponse<T>(resp: Response): Promise<T> {
   const text = await resp.text();
-  const body: unknown = text ? JSON.parse(text) : {};
+  let body: unknown = {};
+  if (text) {
+    try {
+      body = JSON.parse(text);
+    } catch {
+      // 审查 D13：502/504 的 HTML 页曾直落 SyntaxError，绕过 ApiError 信封与 401 自动登出
+      if (resp.status === 401) onUnauthorized?.();
+      throw new ApiError(resp.status, null, `HTTP ${resp.status}：非 JSON 响应`);
+    }
+  }
   if (!resp.ok) {
     const err = body as { error_code?: number; message?: string };
     if (resp.status === 401) onUnauthorized?.();

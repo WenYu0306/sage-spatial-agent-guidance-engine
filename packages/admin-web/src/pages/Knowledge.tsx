@@ -1,6 +1,6 @@
 /** 知识内容管理：列表 + 创建/编辑（版本自增展示）+ 删除；merchant 服务端 403，前端隐藏入口。 */
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { api, ApiError } from "../lib/api.ts";
 import { profileStore } from "../lib/auth.ts";
@@ -94,9 +94,16 @@ function DocModal({ doc, onClose, onSaved }: {
     queryFn: () => api<{ content: string; title: string }>(`/api/v1/knowledge-documents/${doc.id}`),
     enabled: !isNew,
   });
-  if (!isNew && detail.data && form.content === "（载入中…）") {
-    setForm({ title: detail.data.title, doc_type: form.doc_type, content: detail.data.content });
-  }
+  useEffect(() => {
+    // 审查 D15：渲染期 setState 改为副作用；仅在哨兵期回填，避免覆盖用户输入
+    if (!isNew && detail.data) {
+      setForm((prev) =>
+        prev.content === "（载入中…）"
+          ? { title: detail.data.title, doc_type: prev.doc_type, content: detail.data.content }
+          : prev,
+      );
+    }
+  }, [detail.data, isNew]);
   const save = useMutation({
     mutationFn: () => {
       if (isNew) {
