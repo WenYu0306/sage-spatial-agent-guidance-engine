@@ -105,7 +105,7 @@ export default function PoisPage() {
             {list.data.items.map((p) => (
               <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
                 <td className="px-3 py-2 font-medium text-slate-700">{p.name}</td>
-                <td className="px-3 py-2 text-slate-500">{p.category_code}</td>
+                <td className="px-3 py-2 text-slate-500">{categories.data?.items.find((c) => c.code === p.category_code)?.name ?? p.category_code}</td>
                 <td className="px-3 py-2 text-slate-500">
                   {floors.data?.items.find((f) => f.id === p.floor_id)?.name ?? p.floor_id}
                 </td>

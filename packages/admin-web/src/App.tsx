@@ -59,9 +59,9 @@ function Shell({ route }: { route: string }) {
   const roles = payload?.roles ?? [];
   const userRole = roles[0] ?? "guest";
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      <aside className="w-52 shrink-0 border-r border-slate-200 bg-white p-4">
-        <p className="mb-1 text-sm font-semibold text-slate-800">栖云广场运营后台</p>
+    <div className="flex min-h-screen bg-paper">
+      <aside className="w-52 shrink-0 border-r border-rule bg-paper-2 p-4">
+        <p className="mb-1 border-b-2 border-accent pb-1 text-sm font-semibold text-ink">栖云广场运营后台</p>
         <p className="mb-6 text-xs text-slate-400">M10 admin-web</p>
         <nav className="space-y-1">
           {NAV.map((item) => {
@@ -72,7 +72,7 @@ function Shell({ route }: { route: string }) {
                 key={item.path}
                 href={`#${item.path}`}
                 className={`flex items-center justify-between rounded-md px-3 py-1.5 text-sm ${
-                  active ? "bg-slate-800 text-white" : "text-slate-600 hover:bg-slate-100"
+                  active ? "bg-ink text-paper-2" : "text-ink-2 hover:bg-paper-3"
                 }`}
               >
                 {item.label}

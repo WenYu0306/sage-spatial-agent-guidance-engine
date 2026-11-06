@@ -78,10 +78,10 @@ export function Button({
   className?: string;
 }) {
   const kinds = {
-    primary: "bg-slate-800 text-white hover:bg-slate-700",
-    ghost: "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50",
-    danger: "bg-red-600 text-white hover:bg-red-700",
-    subtle: "text-slate-600 hover:bg-slate-100",
+    primary: "bg-accent text-ink hover:bg-accent-deep",
+    ghost: "border border-rule bg-paper-2 text-ink-2 hover:bg-paper-3",
+    danger: "border border-danger/40 bg-paper-2 text-danger hover:bg-danger/10",
+    subtle: "text-muted hover:bg-paper-3",
   } as const;
   return (
     <button
