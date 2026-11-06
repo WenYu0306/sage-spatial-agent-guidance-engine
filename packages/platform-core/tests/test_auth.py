@@ -173,6 +173,35 @@ def test_lockout_window_matches_policy(dsn, lock_user):
         f"锁定窗口应≈{POLICY.window_seconds}s，实测仅剩 {remain:.1f}s")
 
 
+def test_client_ip_prefers_xff_first_hop():
+    """审查 C9/C10：代理链后 client.host 恒为代理 IP，限流须取 XFF 首值。"""
+    from fastapi import Request
+    from platform_core.auth_router import client_ip
+
+    scope_xff = {"type": "http",
+                 "headers": [(b"x-forwarded-for", b"203.0.113.7, 10.0.0.2")],
+                 "client": ("172.17.0.9", 5555)}
+    assert client_ip(Request(scope_xff)) == "203.0.113.7"
+    scope_direct = {"type": "http", "headers": [], "client": ("172.17.0.9", 5555)}
+    assert client_ip(Request(scope_direct)) == "172.17.0.9"
+    scope_none = {"type": "http", "headers": [], "client": None}
+    assert client_ip(Request(scope_none)) == "anon"
+
+
+def test_secret_guard_rejects_public_placeholder_and_short(monkeypatch):
+    """审查 C11：公开示例值与 <32 字符弱密钥必须拒绝签发。"""
+    from platform_core.auth import _secret
+
+    monkeypatch.setenv("JWT_SECRET", "change_me_demo_secret_0123456789abcdef")
+    with pytest.raises(RuntimeError, match="公开示例值"):
+        _secret()
+    monkeypatch.setenv("JWT_SECRET", "short-secret")
+    with pytest.raises(RuntimeError, match="强度不足"):
+        _secret()
+    monkeypatch.setenv("JWT_SECRET", "x" * 32)
+    assert _secret() == "x" * 32
+
+
 def test_success_resets_counter(dsn, lock_user):
     register_failure(dsn, lock_user, POLICY)
     register_failure(dsn, lock_user, POLICY)

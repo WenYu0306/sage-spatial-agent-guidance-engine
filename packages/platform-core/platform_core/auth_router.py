@@ -73,6 +73,18 @@ class AuthContext:
             self._deny("你没有该门店的操作权限", "poi", poi_id)
 
 
+def client_ip(request: Request) -> str:
+    """真实客户端 IP（审查 C9/C10）：nginx/caddy 代理链上 request.client.host
+    恒为代理容器 IP——登录/领券/埋点限流塌缩成全局单桶。XFF 首值优先，
+    无代理头回退直连地址。注：公网直连伪造 XFF 的清洗属网关层职责（见 A6）。"""
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        first = xff.split(",")[0].strip()
+        if first:
+            return first
+    return request.client.host if request.client else "anon"
+
+
 class AuthRuntime:
     """持 DSN/黑名单/锁定策略，产出路由与依赖。一个宿主 app 建一个实例。"""
 
@@ -120,7 +132,7 @@ class AuthRuntime:
 
         def dep(request: Request) -> AuthContext:
             if not request.headers.get("authorization", "").startswith("Bearer "):
-                ip = request.client.host if request.client else "anon"
+                ip = client_ip(request)
                 if not self._guest_enum_limiter.allow(ip):
                     raise AuthError(429, 9002, "请求过于频繁")
                 raw = request.query_params.get(venue_query_key) or ""
@@ -137,7 +149,7 @@ class AuthRuntime:
                                    venue_id=row[0], merchant_id=None, device_id=None,
                                    _runtime=self,
                                    trace_id=request.headers.get("X-Trace-Id"),
-                                   ip=request.client.host if request.client else None)
+                                   ip=client_ip(request))
             return self._authed_ctx(request)
 
         return dep
@@ -216,7 +228,7 @@ def create_auth_router(runtime: AuthRuntime) -> APIRouter:
 
     @router.post("/api/v1/auth/login")
     def login(body: _LoginRequest, request: Request):
-        ip = request.client.host if request.client else None
+        ip = client_ip(request)
         if not runtime._login_limiter.allow(ip or "anon"):
             return JSONResponse(status_code=429,
                                 content={"error_code": 9002, "message": "请求过于频繁"})

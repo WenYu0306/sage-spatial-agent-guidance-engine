@@ -20,6 +20,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from platform_core.auth_router import (
     AuthContext,
     AuthRuntime,
+    client_ip,
     create_auth_router,
     install_error_handlers,
 )
@@ -812,7 +813,7 @@ def create_app(dsn: str) -> FastAPI:
         库存原子扣减（禁止先查后写，PRD 12）；重放返回既有券 duplicate=true。
         领取限流（P2 审计 S-5）：anonymous_id+IP 30 次/分钟。
         """
-        ip = request.client.host if request.client else "anon"
+        ip = client_ip(request)  # 审查 C10：代理链后 client.host 恒为 nginx，限流塌缩
         if not claim_limiter.allow(ip):  # 按IP：换 anonymous_id 横向扫 ID 也拦（审计 S-5）
             from fastapi.responses import JSONResponse
 

@@ -63,10 +63,20 @@ class TokenSubject:
     device_id: int | None = None
 
 
+_PUBLIC_PLACEHOLDER_SECRETS = frozenset({
+    # .env.example 曾随仓库公开发布的示例值（审查 C11）——任何环境都不得用其签发
+    "change_me_demo_secret_0123456789abcdef",
+})
+
+
 def _secret() -> str:
     secret = os.environ.get("JWT_SECRET", "")
     if not secret:
         raise RuntimeError("JWT_SECRET 未设置：拒绝签发（密钥必须来自环境变量）")
+    if secret in _PUBLIC_PLACEHOLDER_SECRETS or len(secret) < 32:
+        raise RuntimeError(
+            "JWT_SECRET 为公开示例值或强度不足（<32 字符）：拒绝签发；"
+            "生成方式：openssl rand -hex 32")
     return secret
 
 

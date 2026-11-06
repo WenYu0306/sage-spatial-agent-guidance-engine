@@ -16,6 +16,7 @@ from fastapi import Depends, FastAPI, Query, Request
 from platform_core.auth_router import (
     AuthContext,
     AuthRuntime,
+    client_ip,
     create_auth_router,
     install_error_handlers,
 )
@@ -94,7 +95,7 @@ def create_app(dsn: str) -> FastAPI:
         """
         from fastapi.responses import JSONResponse
 
-        ip = request.client.host if request.client else "anon"
+        ip = client_ip(request)  # 审查 C10：代理链后 client.host 恒为 nginx，限流塌缩
         if not events_limiter.allow(ip):
             return JSONResponse(status_code=429, content={
                 "error_code": 9002, "message": "请求过于频繁"})
