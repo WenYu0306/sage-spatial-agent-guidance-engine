@@ -295,7 +295,9 @@ def _unknown_poi_names(answer: str, known: set[str]) -> list[str]:
         "玩具店", "眼镜店", "餐厅", "面馆", "日料店", "西餐厅", "美发店", "理发店",
         "花店", "药店", "店铺", "商店", "全馆", "本馆",
     }
-    stop_chars = set("的了是有在去指找哪全这那你我三几几聊说想推荐附近些")
+    # U1 录制期实锤：建议/到/会/乘…等功能词残片（"情建议到店"）被当假店名误杀
+    stop_chars = set("的了是有在去指找哪全这那你我三几几聊说想推荐附近些"
+                     "建议到会可直通将就请需如若乘电梯扶楼层步行往返达至临")
 
     suspects = []
     for w in {m[-5:] for m in _STORE_SUFFIX.findall(answer)}:

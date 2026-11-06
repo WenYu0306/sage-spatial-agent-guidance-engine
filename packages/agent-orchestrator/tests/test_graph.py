@@ -246,3 +246,12 @@ def test_known_poi_names_collects_promotion_store_names():
         ]},
     })
     assert "灶门炭火锅" in names
+
+def test_unknown_poi_names_ignores_function_phrases():
+    """审查 U1 录制期实锤：回答含「…建议到店…」等句式时，功能词残片被当假店名误杀。"""
+    from agent_orchestrator.graph import _unknown_poi_names
+    known = {"云隙咖啡", "野莓茶集", "白桦西餐"}
+    assert _unknown_poi_names("情侣约会建议到店体验更好。", known) == []
+    assert _unknown_poi_names("可以直接到店品尝，乘直梯前往。", known) == []
+    # 真编造仍拦截
+    assert _unknown_poi_names("推荐幻影火锅店。", known) == ["幻影火锅店"]
