@@ -56,3 +56,4 @@
 | 2026-11-06 | trace/stats/recommend-rank 公网裸奔；限流塌缩全局单桶；JWT 公开示例值可签发 | nginx 暴露面过宽 + client.host 代理失真 + .env.example 公开密钥 | A | test_auth.py client_ip/_secret 两用例 + nginx -t | admin.conf 收敛+XFF；client_ip()；_secret() 守卫；A6 状态更新 |
 | 2026-11-06 | seed 活动恒处状态机外 published 态（guest 修复后暴露为列表恒空） | seed.py 沿用 S-1 词汇误套，插值超出 ACT_TRANSITIONS 枚举 | B | test_tools.py::test_promotion_list（数量断言对共享库） | seed.py 活动 upsert 两处 status='active' + dev 库一次性 UPDATE |
 | 2026-11-06 | 知识检索三测试突红（文档批次零代码改动） | D-029 双场地并存 + 测试夹具 fetchone() 无排序，行序漂移后取到无 chunk 的第二场地（8b4b4da 同类残留） | B | knowledge-rag tests 本地全量（CI 全新库不触发） | 两处夹具钉 v.name='山雀里·栖云广场' |
+| 2026-11-06 | 公网问答设施问句全走兜底（本地 dev 与测试从未暴露） | compose agent 容器漏注 SVC_CONTENT、content 漏注 SVC_KNOWLEDGE_RAG（容器内 127.0.0.1 缺省指向自身）；补 env 时 service 级 environment 浅合并覆盖锚点丢 DATABASE_URL，content 崩溃循环 | A | 公网冒烟 + 服务器 agent_traces（nearest 空/route 2004 兜底文案） | compose.demo.yml 两处 environment 补齐（DB 变量重述） |
