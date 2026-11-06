@@ -33,6 +33,7 @@
 | PyJWT | 2.15 | MIT | M1 认证：access/refresh token 签发与验证（HS256，PRD 9 安全表） | python-jose（维护活跃度下滑）、authlib（含 OAuth，超出需求） | API 最小（encode/decode 两个函数），持续维护，主动警告弱密钥长度 |
 | qrcode (npm) | ^8 | MIT | M11 大屏「发到手机」二维码生成（扫码落地 M12 /m/route/{id}） | 自绘 QR 编码器（不现实）、qr-server（引入服务端依赖） | 纯前端生成零服务依赖，持续维护，仅 1 个运行时依赖 |
 | redis-py | 8.1 | MIT | token 登出黑名单（SETNX+TTL 自动过期，PRD 9：Redis 或数据库表） | 数据库表（需新迁移与清理任务） | Redis 7 已在技术栈内，黑名单仅 5 行调用；内存后端为单进程 demo 降级 |
+| hallmark (Claude Code 插件) | 2.0.0 | MIT | U1 展示面迭代的设计方向系统：12 套成套方向样张 + 反 AI 默认值硬底线（sloplint 可检查）+ dark-mode/字体/数据可视化参考 | 无（此前为工程师默认样式，被产品负责人判为不像真产品） | 49.3k★ 社区验证、规则可 lint、与 ECC 无命名空间/hooks 冲突；用户级安装不进仓库；Together AI/Inspo 可选信号不启用（密钥纪律） |
 
 ## 待引入（后续任务按流程调研后登记）
 
