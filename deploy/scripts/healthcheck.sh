@@ -13,7 +13,13 @@ for svc in content:8945 route-engine:8942 knowledge-rag:8943 recommender:8944 an
   echo "$out" | grep -qF '"ok":true' || { echo "  ✗ $name 未就绪"; fail=1; }
 done
 probe=${SAGE_HTTP:-127.0.0.1:8080}  # 与 compose SAGE_HTTP 绑定地址一致
-code=$(curl -s -o /dev/null -w "%{http_code}" -m 5 "http://$probe/admin/" || true)
+# 3 次重试（间隔 3s）：deploy 重建容器后端口绑定可能晚于 --wait 的 Healthy 判定
+code=000
+for _ in 1 2 3; do
+  code=$(curl -s -o /dev/null -w "%{http_code}" -m 5 "http://$probe/admin/" || true)
+  [ "$code" == 200 ] || [ "$code" == 302 ] && break
+  sleep 3
+done
 echo "  nginx(/admin/) → HTTP $code"
 [[ "$code" == 200 || "$code" == 302 ]] || fail=1
 exit $fail
