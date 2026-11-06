@@ -55,7 +55,11 @@ services:
   content:
     <<: *backend-defaults
     command: uvicorn content_service.app:make_app --factory --host 0.0.0.0 --port 8945
+    # 锚点浅合并：service 级 environment 会整体覆盖 x-backend 的同名键，
+    # DB 两项必须在此重述（agent 块同模式）
     environment:
+      DATABASE_URL: postgresql+psycopg://sage:sage_demo_pw@postgres:5432/sage
+      REDIS_URL: redis://redis:6379/0
       SVC_KNOWLEDGE_RAG: http://knowledge-rag:8943  # M6 重嵌触发（缺省 127.0.0.1 在容器内指向自己）
     healthcheck: &hc
       test: ["CMD", "python", "-c", "import urllib.request as u;u.urlopen('http://127.0.0.1:8945/health',timeout=2)"]
