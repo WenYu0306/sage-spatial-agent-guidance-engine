@@ -4,6 +4,8 @@ import { defineConfig } from "vite";
 
 // 手机端代理：agent(8941) chat/路线缓存；events(8946) 直报；其余 content(8945)
 export default defineConfig({
+  // base：公网部署在 nginx /m/ 路径下（Dockerfile.admin 注入 VITE_BASE）；本地 dev 保持 /
+  base: process.env.VITE_BASE ?? "/",
   plugins: [react(), tailwindcss()],
   server: {
     port: 5194,
