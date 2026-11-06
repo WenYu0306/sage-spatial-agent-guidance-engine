@@ -47,6 +47,8 @@ fi
 # --wait：等全部服务达到 healthy（无 healthcheck 的等 running）再进体检，消除启动竞态
 docker compose -f deploy/compose.demo.yml up -d --wait --wait-timeout 180
 echo "== [6/7] 健康检查 =="
+# SAGE_HTTP 在 deploy/.env（compose 会读但 shell 不会）——不 source 则探测 127.0.0.1 落空
+set -a; [ -f deploy/.env ] && source deploy/.env; set +a
 bash deploy/scripts/healthcheck.sh
 echo "== [7/7] 灌 demo 数据（seed 幂等 + ingest 知识向量）=="
 docker compose -f deploy/compose.demo.yml run --rm seed
