@@ -9,13 +9,13 @@ export const MOCK_ROUTE: RouteData = {
   total_time_s: 256.2,
   nodes: {
     1: { id: 1, x: 600, y: 650, floor: "B1", label: "云雀优选超市" },
-    2: { id: 2, x: 600, y: 560, floor: "B1", label: "走廊点(600,560)" },
-    3: { id: 3, x: 600, y: 260, floor: "B1", label: "走廊点(600,260)" },
+    2: { id: 2, x: 600, y: 560, floor: "B1", label: "沿走廊" },
+    3: { id: 3, x: 600, y: 260, floor: "B1", label: "沿走廊" },
     4: { id: 4, x: 600, y: 200, floor: "B1", label: "B1 直梯" },
     5: { id: 5, x: 600, y: 200, floor: "F1", label: "F1 直梯" },
     6: { id: 6, x: 600, y: 200, floor: "F2", label: "F2 直梯" },
-    7: { id: 7, x: 600, y: 260, floor: "F2", label: "走廊点(600,260)" },
-    8: { id: 8, x: 1050, y: 260, floor: "F2", label: "走廊点(1050,260)" },
+    7: { id: 7, x: 600, y: 260, floor: "F2", label: "沿走廊" },
+    8: { id: 8, x: 1050, y: 260, floor: "F2", label: "沿走廊" },
     9: { id: 9, x: 1050, y: 130, floor: "F2", label: "巨幕星云影院" },
   },
   segments: [
