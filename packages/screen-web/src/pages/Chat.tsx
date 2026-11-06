@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { KioskShell } from "../components/ui.tsx";
-import { floorPillClass, IconStore } from "../components/icons.tsx";
+import { floorPillClass, IconStore } from "@sage/map-render/src/lib/icons.tsx";
 import type { DeviceIdentity } from "../lib/device.ts";
 import { createSSEParser } from "@sage/map-render/src/lib/http/sse.ts";
 import type { RoutePayload } from "../lib/route.ts";

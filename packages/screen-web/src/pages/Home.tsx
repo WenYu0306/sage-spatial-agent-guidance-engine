@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Empty, KioskShell, LoadError, Spinner } from "../components/ui.tsx";
-import { IconBag, IconChat, IconMeal, IconWC } from "../components/icons.tsx";
+import { IconBag, IconChat, IconMeal, IconWC } from "@sage/map-render/src/lib/icons.tsx";
 import { ApiError, apiFetch } from "@sage/map-render/src/lib/http/api.ts";
 import type { DeviceIdentity } from "../lib/device.ts";
 import { buildEvent, track } from "@sage/map-render/src/lib/http/events.ts";
