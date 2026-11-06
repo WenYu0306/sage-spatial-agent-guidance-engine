@@ -42,3 +42,16 @@
 | 2026-11-06 | 静态底图全 404 | compose 挂载 ../maps 相对 deploy/ 解析为仓库根/maps（不存在→空目录），应为 ./maps | A | nginx 容器内 ls 挂载目录为空 | compose.demo.yml 挂载路径修正 |
 | 2026-11-06 | deploy.sh 一启动即崩（SHA\xef unbound） | macOS bash 3.2 把 $VAR 紧跟的全角括号首字节吞进变量名；[[ ]] 引号段+glob 混合模式尾部 * 被转义 | B | bash deploy.sh / 匹配单测分别复现 | $VAR 紧贴 CJK 处加花括号；匹配改 grep -qF |
 | 2026-11-06 | D-029 后 seed 断言连锁假红（扶梯 18 条/venues=2/floors=6） | seed 计数与路网测试按"单场地库"全表查询，第二验收场地并存即漂移 | B | 本地全量测试暴露（CI 全新库不触发） | count_rows 场地域表按演示场地口径；graph fixture 钉场地 |
+| 2026-11-06 | 未知/脏场地打崩 route-engine worker，2004 降级不可达 | db 层 SystemExit(BaseException) 穿透 except Exception | A | test_service.py::test_plan_unknown_venue_is_business_error_2004 | route_engine/db.py 改抛 RouteError(2004) |
+| 2026-11-06 | traffic_by_hour 两粒度恒 500 | 分桶 SQL 含 tz 占位但参数漏传 tzname（M9 时区修复漏此分支） | A | test_app.py::test_traffic_by_hour_timeseries_both_grains | analytics app.py 补 [tzname]+params |
+| 2026-11-06 | 登录锁定窗口恒 1 秒（实测传 3600/86400 均 1.0s） | interval '%s seconds' 字面量内 %s 变 $1 不绑定 | A | test_auth.py::test_lockout_window_matches_policy | auth.py make_interval(secs => %s) |
+| 2026-11-06 | 全部工具 trace latency_ms 恒 0ms | t0 写在 run_tool 之后 | A | test_graph.py::test_tool_trace_latency_is_measured | graph.py t0 前移 |
+| 2026-11-06 | 跨租户 venue_id 经 /pois/nearest 读穿 | 未比对场地租户与 token 租户（红线违例） | A | test_m2_spatial.py::test_pois_nearest_cross_tenant_venue_denied | content _venue_of_tenant + active 复核 |
+| 2026-11-06 | guest 活动列表恒空 | 活动状态机无 published 态，guest 过滤永不匹配（S-1 把 POI 词汇误套活动） | A | test_activities_coupons_knowledge.py::test_guest_sees_active_activities | content act_list status='active' |
+| 2026-11-06 | events 缺必填字段直落 500 泄堆栈 | EventsBody 收未校验 dict，event_id/actor_type 无前置校验 | A | test_app.py::test_events_missing_required_fields_use_error_envelope | events.py _normalize 校验 + 端点 422 信封 |
+| 2026-11-06 | admin 全局 502 页使 API 客户端抛裸 SyntaxError | mapResponse 裸 JSON.parse 绕过信封与 401 登出 | A | admin tests/auth.test.ts 非 JSON 两用例 | api.ts try/catch + 401 补触发 |
+| 2026-11-06 | 知识编辑内容可能被静默覆盖 | 渲染期 setState + 『（载入中…）』哨兵串回填 | A | 手工（React hook 行为，渲染测试缺口照旧） | Knowledge.tsx useEffect 函数式回填 |
+| 2026-11-06 | chaos SVG 注入/堆栈泄漏断言从未可能失败 | grep -qv 逐行取反，多行输入恒真 | A | 就地提取双分支验证（含旧逻辑恒真空证） | chaos_test.sh 断言整体匹配后取反 |
+| 2026-11-06 | 部署回滚静默空转 | SAGE_TAG 先于 git pull 计算，回滚点与当前同 tag | A | git 沙箱实测（pull 后 HEAD + 显式覆盖） | deploy.sh tag 移到 pull 后 |
+| 2026-11-06 | trace/stats/recommend-rank 公网裸奔；限流塌缩全局单桶；JWT 公开示例值可签发 | nginx 暴露面过宽 + client.host 代理失真 + .env.example 公开密钥 | A | test_auth.py client_ip/_secret 两用例 + nginx -t | admin.conf 收敛+XFF；client_ip()；_secret() 守卫；A6 状态更新 |
+| 2026-11-06 | seed 活动恒处状态机外 published 态（guest 修复后暴露为列表恒空） | seed.py 沿用 S-1 词汇误套，插值超出 ACT_TRANSITIONS 枚举 | B | test_tools.py::test_promotion_list（数量断言对共享库） | seed.py 活动 upsert 两处 status='active' + dev 库一次性 UPDATE |
