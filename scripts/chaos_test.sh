@@ -10,7 +10,9 @@ assert_contains() {
   if echo "$1" | grep -q "$2"; then ok "$3"; else fail "$3（缺 $2）"; fi
 }
 assert_not_contains() {
-  if echo "$1" | grep -qv "$2"; then ok "$3"; else fail "$3"; fi
+  # 审查 E14：grep -v 是逐行取反——多行输入只要有一行不匹配就 exit 0，
+  # 断言恒真（体检仪失明）。改为整体 -q 匹配后取反结果。
+  if echo "$1" | grep -q "$2"; then fail "$3（命中 $2）"; else ok "$3"; fi
 }
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"

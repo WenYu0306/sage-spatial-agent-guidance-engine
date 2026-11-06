@@ -4,8 +4,8 @@
 # 说明（PRD 7.5 偏差，见 D-026）：无镜像仓库，"拉镜像"以"git pull + 本机构建"实现。
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-# 镜像 tag：git SHA 优先（rsync 快照模式退化为时间戳）；回滚点在起服务前落盘
-export SAGE_TAG="${SAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || echo "rsync-$(date +%H%M)")}"
+# 审查 E15：SAGE_TAG 必须取 pull 之后的 HEAD——此前先取 tag 再 pull，
+# 镜像仍打旧 SHA，回滚点与当前同 tag，回滚静默空转。显式传 SAGE_TAG（SHIP 模式）时尊重环境。
 if [ -d .git ]; then
   BRANCH=$(git rev-parse --abbrev-ref HEAD)
   SHA=$(git rev-parse --short HEAD)
@@ -18,8 +18,10 @@ if [ -d .git ]; then
     sleep 15
   done
   [ "$pull_ok" = "1" ] || { echo "✗ 拉取代码连续失败，中止部署"; exit 1; }
+  export SAGE_TAG="${SAGE_TAG:-$(git rev-parse --short HEAD)}"
 else
   SHA="rsync-$(date +%H%M)"
+  export SAGE_TAG="${SAGE_TAG:-${SHA}}"
   echo "== [1/7] 代码就绪（rsync 同步模式：无 .git，跳过 pull——D-026，快照 ${SHA}）=="
 fi
 echo "== [2/7] 构建镜像 =="
