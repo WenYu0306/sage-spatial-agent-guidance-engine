@@ -183,8 +183,8 @@ def _tools(state: AgentState, config) -> dict:
             if calls >= MAX_TOOL_CALLS or time.monotonic() > deadline:
                 degraded = True
                 break
+            t0 = time.monotonic()  # 审查 B4：起点必须在 run_tool 之前，否则时延恒 0
             result = run_tool(code, args, ctx, seen=cfg.setdefault("seen", set()))
-            t0 = time.monotonic()
             calls += 1
             results[code] = result.data
             status = "ok" if result.ok else "error"

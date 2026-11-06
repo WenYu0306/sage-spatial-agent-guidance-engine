@@ -159,6 +159,17 @@ def test_full_flow_poi_search(base_ids):
     assert rows[-1][0] == "generate"
 
 
+def test_tool_trace_latency_is_measured(base_ids):
+    """审查 B4：t0 曾放在 run_tool 之后，tool_call 时延恒 0ms，监控五指标失真。"""
+    _final, trace_id = _invoke(base_ids, "我想吃火锅")
+    with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+        cur.execute("select tool_code, latency_ms from agent_traces where trace_id=%s "
+                    "and step_type='tool_call'", (trace_id,))
+        lats = dict(cur.fetchall())
+    assert lats, "应有 tool_call 步骤"
+    assert lats.get("poi.search", 0) > 0, f"poi.search 时延必须为真实测量值，实测 {lats}"
+
+
 def test_venue_info_uses_knowledge(base_ids):
     final, _tid = _invoke(base_ids, "商场几点关门")
     assert "knowledge.query" in final["tool_results"]
