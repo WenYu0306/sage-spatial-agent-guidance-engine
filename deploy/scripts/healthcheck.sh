@@ -12,8 +12,8 @@ for svc in content:8945 route-engine:8942 knowledge-rag:8943 recommender:8944 an
   # grep -F 固定串匹配：[[ ]] 引号段+glob 混合模式在 macOS bash 3.2 有尾部 * 被转义的 bug
   echo "$out" | grep -qF '"ok":true' || { echo "  ✗ $name 未就绪"; fail=1; }
 done
-http_port=${SAGE_HTTP_PORT:-8080}
-code=$(curl -s -o /dev/null -w "%{http_code}" -m 5 "http://127.0.0.1:$http_port/admin/" || true)
+probe=${SAGE_HTTP:-127.0.0.1:8080}  # 与 compose SAGE_HTTP 绑定地址一致
+code=$(curl -s -o /dev/null -w "%{http_code}" -m 5 "http://$probe/admin/" || true)
 echo "  nginx(/admin/) → HTTP $code"
 [[ "$code" == 200 || "$code" == 302 ]] || fail=1
 exit $fail
