@@ -137,9 +137,10 @@ export function App() {
       <button
         onClick={() => setA11y((v) => !v)}
         title="无障碍模式：放大字号并提高对比度"
-        className={`fixed bottom-5 right-5 z-40 rounded-full px-6 py-3 text-xl shadow-xl
-                    ${a11y ? "bg-amber-500 text-slate-900" : "bg-slate-800/90 text-slate-300"}`}>
-        ♿ 无障碍{a11y ? "开" : "关"}
+        className={`fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full border px-6 py-3 text-xl shadow-xl
+                    ${a11y ? "border-accent-deep bg-accent text-ink" : "border-rule bg-paper-2 text-ink-2"}`}>
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className="size-5"><path d="M12 2a2 2 0 0 1 2 2 2 2 0 0 1-2 2 2 2 0 0 1-2-2 2 2 0 0 1 2-2m11 7h-7v12h-2v-6h-2v6H10V9H3V7h20v2Z"/></svg>
+        无障碍{a11y ? "开" : "关"}
       </button>
     </>
   );

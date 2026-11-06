@@ -74,7 +74,7 @@ export function RoutePage({
 
   async function showQr() {
     const url = await QRCode.toDataURL(qrTarget(payload.route_id, window.location.origin),
-      { width: 420, margin: 2, color: { dark: "#0b1220", light: "#ffffff" } });
+      { width: 420, margin: 2, color: { dark: "#2b2925", light: "#ffffff" } });
     setQrDataUrl(url);
   }
 
@@ -82,14 +82,14 @@ export function RoutePage({
     <KioskShell>
       <header className="flex items-center justify-between">
         <button onClick={onBack}
-          className="rounded-lg bg-slate-800 px-6 py-2 text-xl hover:bg-slate-700">
+          className="rounded-lg border border-rule bg-paper-2 px-6 py-2 text-xl text-ink-2 hover:bg-paper-3">
           ← 返回首页
         </button>
         <div className="text-2xl font-semibold">
           {routeTitle(route.start_label, route.goal_label, route.total_distance_meter, route.total_time_s)}
         </div>
         <button onClick={showQr}
-          className="rounded-xl bg-emerald-600 px-8 py-3 text-2xl font-semibold hover:bg-emerald-500">
+          className="rounded-xl bg-ok px-8 py-3 text-2xl font-semibold text-white hover:bg-ok/90">
           发到手机
         </button>
       </header>
@@ -97,21 +97,21 @@ export function RoutePage({
       <div className="mt-4 flex gap-3">
         {floors.map((f) => (
           <button key={f} onClick={() => setFloor(f)}
-            className={`rounded-lg px-6 py-2 text-xl ${floor === f
-              ? "bg-sky-600 text-white" : "bg-slate-800 text-slate-300 hover:bg-slate-700"}`}>
+            className={`rounded-lg border px-6 py-2 text-xl ${floor === f
+              ? "border-ink bg-ink text-paper-2" : "border-rule bg-paper-2 text-ink-2 hover:bg-paper-3"}`}>
             {f}
           </button>
         ))}
       </div>
 
       <div className="mt-4 grid flex-1 grid-cols-[3fr_2fr] gap-6 overflow-hidden">
-        <div className="overflow-hidden rounded-2xl bg-slate-800/40">
+        <div className="overflow-hidden rounded-2xl border border-rule bg-paper-2">
           <MapStage>
             <FloorPlan floor={floor} points={[]} overlay={overlayFor(route, floor)} />
           </MapStage>
         </div>
-        <div className="overflow-y-auto rounded-2xl bg-slate-900/70 p-5">
-          <div className="mb-3 text-xl font-semibold text-slate-300">
+        <div className="overflow-y-auto rounded-2xl border border-rule bg-paper-2 p-5 shadow-card">
+          <div className="mb-3 text-xl font-semibold text-ink-2">
             分段（共 {route.segments.length} 段）
           </div>
           <ol className="space-y-3">
@@ -121,10 +121,9 @@ export function RoutePage({
               const active = a?.floor === floor || b?.floor === floor;
               return (
                 <li key={i}
-                  className={`rounded-xl px-4 py-3 text-xl ${active
-                    ? "bg-slate-800 text-slate-100" : "bg-slate-900 text-slate-500"}`}>
-                  <span className="font-semibold"
-                    style={{ color: LINE_COLOR[s.edge_type] ?? "#38bdf8" }}>
+                  className={`rounded-xl border px-4 py-3 text-xl ${active
+                    ? "border-ink/30 bg-paper-3 text-ink" : "border-transparent bg-paper-2/60 text-muted"}`}>
+                  <span className={`font-semibold ${s.edge_type === "walk" ? "text-ink-2" : "text-accent-deep"}`}>
                     [{EDGE_LABEL[s.edge_type] ?? s.edge_type}]
                   </span>{" "}
                   {describeSegment(s, route.nodes)}
@@ -136,18 +135,18 @@ export function RoutePage({
       </div>
 
       {qrDataUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40"
              onClick={() => setQrDataUrl(null)}>
-          <div className="rounded-3xl bg-slate-900 p-10 text-center"
+          <div className="rounded-3xl border border-rule bg-paper-2 p-10 text-center shadow-card"
                onClick={(e) => e.stopPropagation()}>
             <div className="text-3xl font-semibold">扫码接力到手机</div>
             <img src={qrDataUrl} alt="路线二维码"
                  className="mx-auto my-6 size-80 rounded-2xl bg-white p-2" />
-            <div className="text-xl text-slate-400">
+            <div className="text-xl text-muted">
               用手机扫码，在手机上继续查看这条路线（30 分钟内有效）
             </div>
             <button onClick={() => setQrDataUrl(null)}
-              className="mt-6 rounded-xl bg-slate-700 px-10 py-3 text-2xl hover:bg-slate-600">
+              className="mt-6 rounded-xl border border-rule bg-paper-3 px-10 py-3 text-2xl text-ink hover:bg-rule">
               关闭
             </button>
           </div>

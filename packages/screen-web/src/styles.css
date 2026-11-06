@@ -1,22 +1,49 @@
 @import "tailwindcss";
 
+/* U1-b 设计令牌：hallmark「furrow」方向——暖纸 / 墨 / 琥珀 + 楼层色带。
+   全部色彩与字体经令牌出（hallmark 硬底线 #1），禁止页面内字面色值。 */
+@theme {
+  --color-paper: oklch(96.5% 0.008 90);
+  --color-paper-2: oklch(99.5% 0.005 90);
+  --color-paper-3: oklch(92.5% 0.012 90);
+  --color-ink: oklch(18% 0.005 60);
+  --color-ink-2: oklch(28% 0.008 60);
+  --color-muted: oklch(44% 0.010 60);
+  --color-rule: oklch(89% 0.010 90);
+  --color-accent: oklch(70% 0.19 40);
+  --color-accent-deep: oklch(58% 0.19 40);
+  --color-ok: oklch(50% 0.11 150);
+  --color-warn: oklch(54% 0.14 60);
+  --color-danger: oklch(52% 0.19 27);
+  --color-floor-b1: oklch(52% 0.09 210);
+  --color-floor-f1: oklch(60% 0.14 55);
+  --color-floor-f2: oklch(50% 0.12 320);
+  --font-display: "Red Hat Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-body: "Red Hat Text", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-mono: "Red Hat Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --ease-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 html, body, #root {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: #0b1220;
-  color: #e2e8f0;
-  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
 
-/* 无障碍：高对比覆盖（字号缩放走 html font-size，Tailwind rem 全局放大） */
-[data-contrast="high"] .text-slate-400,
-[data-contrast="high"] .text-slate-500 {
-  color: #e2e8f0 !important;
+body {
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  /* furrow 等高线纸面纹理：低透明度流线，460px 平铺 */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='460' height='460'%3E%3Cg fill='none' stroke='%234a4237' stroke-opacity='.045' stroke-width='1.2'%3E%3Cpath d='M0 60 Q 115 20 230 60 T 460 60'/%3E%3Cpath d='M0 150 Q 115 105 230 150 T 460 150'/%3E%3Cpath d='M0 250 Q 115 205 230 250 T 460 250'/%3E%3Cpath d='M0 340 Q 115 300 230 340 T 460 340'/%3E%3Cpath d='M0 430 Q 115 388 230 430 T 460 430'/%3E%3C/g%3E%3C/svg%3E");
+  background-size: 460px 460px;
 }
-[data-contrast="high"] .bg-slate-800\/70,
-[data-contrast="high"] .bg-slate-800\/80,
-[data-contrast="high"] .bg-slate-900\/80,
-[data-contrast="high"] .bg-slate-900\/70 {
-  background-color: #1e293b !important;
+
+/* 无障碍高对比：令牌覆盖（比逐类 !important 可维护；字号缩放仍走 html font-size） */
+[data-contrast="high"] {
+  --color-paper: oklch(99.5% 0.005 90);
+  --color-paper-3: oklch(96% 0.01 90);
+  --color-muted: oklch(30% 0.012 60);
+  --color-rule: oklch(70% 0.02 90);
+  --color-accent: oklch(62% 0.19 40);
 }

@@ -163,35 +163,35 @@ export function Chat({
     <KioskShell>
       <header className="flex items-center justify-between">
         <button onClick={onBack}
-          className="rounded-lg bg-slate-800 px-6 py-2 text-xl hover:bg-slate-700">
+          className="rounded-lg border border-rule bg-paper-2 px-6 py-2 text-xl text-ink-2 hover:bg-paper-3">
           ← 返回首页
         </button>
         <div className="flex items-center gap-3">
           <button disabled title="语音能力未启用（V2）"
-            className="rounded-lg bg-slate-900 px-5 py-2 text-xl text-slate-600">🎤 语音</button>
+            className="rounded-lg border border-rule bg-paper-2 px-5 py-2 text-xl text-muted">语音</button>
           <button disabled title="数字人能力未启用（V2）"
-            className="rounded-lg bg-slate-900 px-5 py-2 text-xl text-slate-600">🧑‍💼 数字人</button>
+            className="rounded-lg border border-rule bg-paper-2 px-5 py-2 text-xl text-muted">数字人</button>
         </div>
       </header>
 
       {phase === "down" ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-6">
           <div className="text-5xl">服务暂时不可用</div>
-          <div className="text-2xl text-slate-400">
+          <div className="text-2xl text-muted">
             您可以前往 {session.venueName} 服务台（F1 中庭）获取帮助
           </div>
-          <div className="text-2xl text-slate-500">营业时间 {session.businessHours ?? "10:00-22:00"}</div>
+          <div className="text-2xl text-muted">营业时间 {session.businessHours ?? "10:00-22:00"}</div>
           <button onClick={onBack}
-            className="rounded-xl bg-sky-600 px-10 py-4 text-2xl hover:bg-sky-500">
+            className="rounded-xl bg-accent px-10 py-4 text-2xl text-ink hover:bg-accent-deep">
             返回首页
           </button>
         </div>
       ) : phase === "timeout" ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-6">
           <div className="text-5xl">回应超时了</div>
-          <div className="text-2xl text-slate-400">请再试一次，或前往服务台咨询</div>
+          <div className="text-2xl text-muted">请再试一次，或前往服务台咨询</div>
           <button onClick={onBack}
-            className="rounded-xl bg-sky-600 px-10 py-4 text-2xl hover:bg-sky-500">
+            className="rounded-xl bg-accent px-10 py-4 text-2xl text-ink hover:bg-accent-deep">
             返回首页
           </button>
         </div>
@@ -199,71 +199,74 @@ export function Chat({
         <>
           <div ref={listRef} className="mt-6 flex-1 space-y-6 overflow-y-auto pr-2">
             {messages.map((m, i) => (
-              <div key={i} className={m.role === "user" ? "flex justify-end" : ""}>
+              <div key={i}
+                className={m.role === "user" ? "flex justify-end" : "flex flex-col items-start gap-3"}>
+                {m.role === "ai" && (
+                  <div className="text-base font-medium tracking-wide text-muted">栖云小雀</div>
+                )}
                 <div className={
                   m.role === "user"
-                    ? "max-w-[70%] rounded-2xl bg-sky-700/60 px-6 py-4 text-2xl"
-                    : "max-w-[80%] rounded-2xl bg-slate-800/80 px-6 py-4 text-2xl"
+                    ? "max-w-[70%] rounded-2xl rounded-br-md bg-accent px-6 py-4 text-2xl text-ink"
+                    : "max-w-[80%] rounded-2xl rounded-bl-md border border-rule bg-paper-2 px-6 py-4 text-2xl shadow-card"
                 }>
                   <div className="whitespace-pre-wrap">{m.text}</div>
-                  {m.cards && m.cards.length > 0 && (
-                    <div className="mt-4 flex gap-4 overflow-x-auto pb-2">
-                      {m.cards.map((c) => (
-                        <div key={c.poi_id}
-                          className="min-w-64 rounded-xl bg-slate-900/90 p-4">
-                          <div className="text-2xl font-semibold">{c.name}</div>
-                          <div className="mt-1 text-xl text-slate-400">
-                            {c.floor ?? ""}层
-                            {c.distance_meter != null && ` · ${c.distance_meter}米`}
-                            {c.eta_seconds != null && ` · 约${Math.round(c.eta_seconds)}秒`}
-                          </div>
-                          {c.reasons && c.reasons.length > 0 && (
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              {c.reasons.map((r) => (
-                                <span key={r}
-                                  className="rounded-md bg-slate-800 px-2 py-0.5 text-lg text-slate-300">
-                                  {r}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          {c.coupon && (
-                            <div className="mt-2 text-xl text-amber-300">🎫 {c.coupon.title}</div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {m.route && (
-                    <button
-                      onClick={() => onRoute(m.route as RoutePayload)}
-                      className="mt-4 rounded-xl bg-emerald-600 px-6 py-3 text-2xl hover:bg-emerald-500">
-                      查看路线 → {m.route.start_label} 到 {m.route.goal_label}
-                      （{m.route.summary.distance_meter}米 / 约{Math.round(m.route.summary.eta_seconds)}秒）
-                    </button>
-                  )}
-                  {m.degraded && (
-                    <div className="mt-3 text-xl text-amber-300">
-                      ⚠ 部分能力降级，结果可能不完整
-                    </div>
-                  )}
                 </div>
+                {m.cards && m.cards.length > 0 && (
+                  <div className="flex max-w-full gap-4 overflow-x-auto pb-2">
+                    {m.cards.map((c) => (
+                      <div key={c.poi_id}
+                        className="min-w-64 rounded-card border border-rule bg-paper-2 p-4 shadow-card">
+                        <div className="text-2xl font-semibold text-ink">{c.name}</div>
+                        <div className="mt-1 text-xl text-muted">
+                          {c.floor ?? ""}层
+                          {c.distance_meter != null && ` · ${c.distance_meter}米`}
+                          {c.eta_seconds != null && ` · 约${Math.round(c.eta_seconds)}秒`}
+                        </div>
+                        {c.reasons && c.reasons.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {c.reasons.map((r) => (
+                              <span key={r}
+                                className="rounded-md border border-rule bg-paper-3 px-2 py-0.5 text-lg text-ink-2">
+                                {r}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {c.coupon && (
+                          <div className="mt-2 text-xl font-medium text-accent-deep">券 · {c.coupon.title}</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {m.route && (
+                  <button
+                    onClick={() => onRoute(m.route as RoutePayload)}
+                    className="rounded-xl bg-ok px-6 py-3 text-2xl text-white hover:bg-ok/90">
+                    查看路线 · {m.route.summary.distance_meter}米 / 约{Math.round(m.route.summary.eta_seconds / 60)}分钟
+                  </button>
+                )}
+                {m.degraded && (
+                  <div className="text-xl font-medium text-warn">
+                    注意：部分能力降级，结果可能不完整
+                  </div>
+                )}
               </div>
             ))}
             {thinking && (
               <div className="flex items-center gap-2 px-2">
                 {[0, 1, 2].map((i) => (
                   <span key={i}
-                    className="size-3 animate-bounce rounded-full bg-sky-400"
+                    className="size-3 animate-bounce rounded-full bg-accent-deep"
                     style={{ animationDelay: `${i * 150}ms` }} />
                 ))}
-                <span className="ml-2 text-2xl text-slate-400">AI 正在思考…</span>
+                <span className="ml-2 text-2xl text-muted">正在思考…</span>
               </div>
             )}
           </div>
 
           {phase === "error" && (
-            <div className="mb-3 rounded-xl bg-rose-900/50 px-6 py-3 text-2xl text-rose-200">
+            <div className="mb-3 rounded-xl border border-danger/30 bg-danger/10 px-6 py-3 text-2xl text-danger">
               {errorText || "出错了，请重试"}
             </div>
           )}
@@ -278,12 +281,12 @@ export function Chat({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="请输入您的问题，例如：有没有适合情侣吃饭的地方？"
-              className="flex-1 rounded-2xl bg-slate-800 px-6 py-4 text-2xl outline-none
-                         placeholder:text-slate-500 focus:ring-2 focus:ring-sky-500"
+              className="flex-1 rounded-2xl border border-rule bg-paper-2 px-6 py-4 text-2xl outline-none
+                         placeholder:text-muted focus:ring-2 focus:ring-accent-deep"
             />
             <button type="submit" disabled={thinking || !draft.trim()}
-              className="rounded-2xl bg-sky-600 px-10 text-2xl font-semibold
-                         hover:bg-sky-500 disabled:opacity-40">
+              className="rounded-2xl bg-accent px-10 text-2xl font-semibold text-ink
+                         hover:bg-accent-deep disabled:opacity-40">
               发送
             </button>
           </form>

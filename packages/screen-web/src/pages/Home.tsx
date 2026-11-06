@@ -101,15 +101,15 @@ export function Home({
           <h1 className="text-5xl font-bold tracking-wide">
             {session.venueName}
           </h1>
-          <p className="mt-2 text-2xl text-slate-400">
+          <p className="mt-2 text-2xl text-muted">
             欢迎光临 · 营业时间 {session.businessHours ?? "10:00-22:00"}
           </p>
         </div>
         <div className="text-right">
-          <div className="font-mono text-6xl font-semibold text-sky-300">
+          <div className="font-mono text-6xl font-semibold text-accent-deep">
             {now.toLocaleTimeString("zh-CN", { hour12: false })}
           </div>
-          <div className="mt-1 text-xl text-slate-400">
+          <div className="mt-1 text-xl text-muted">
             {now.toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" })}
           </div>
         </div>
@@ -119,14 +119,14 @@ export function Home({
         {quick.map((q) => (
           <button key={q.label}
             onClick={() => onAsk("ask", q.seed)}
-            className="rounded-3xl bg-slate-800/70 py-14 text-4xl font-semibold
-                       shadow-lg transition hover:bg-sky-700/80 active:scale-[0.99]">
+            className="rounded-3xl border border-rule bg-paper-2 py-14 text-4xl font-semibold text-ink
+                       shadow-card transition hover:border-accent active:scale-[0.99]">
             {q.label}
           </button>
         ))}
       </main>
 
-      <footer className="rounded-2xl bg-slate-900/80 px-8 py-5">
+      <footer className="rounded-2xl border border-rule bg-paper-2 px-8 py-5 shadow-card">
         {ads.length === 0 ? (
           adsQ.isError ? (
             <Empty text="活动信息暂时拿不到（服务异常，已静默重试）" />
@@ -146,16 +146,16 @@ export function Home({
               }}
               className="block w-full text-left"
             >
-              <span className="mr-3 rounded-md bg-sky-600 px-3 py-1 text-lg">
+              <span className="mr-3 rounded-md bg-accent px-3 py-1 text-lg text-ink">
                 {card.kind === "coupon" ? "优惠" : "活动"}
               </span>
               <span className="text-3xl font-semibold">{card.title}</span>
-              <span className="ml-4 text-2xl text-slate-400">{card.detail}</span>
+              <span className="ml-4 text-2xl text-muted">{card.detail}</span>
             </button>
             <div className="mt-3 flex gap-2">
               {ads.map((a, i) => (
                 <span key={a.key}
-                  className={`h-2 w-8 rounded-full ${i === adIndex ? "bg-sky-400" : "bg-slate-700"}`} />
+                  className={`h-2 w-8 rounded-full ${i === adIndex ? "bg-accent-deep" : "bg-rule"}`} />
               ))}
             </div>
           </div>
