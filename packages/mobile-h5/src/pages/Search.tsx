@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { apiFetch } from "@sage/map-render/src/lib/http/api.ts";
+import { floorPillClass } from "@sage/map-render/src/lib/icons.tsx";
 import { useState } from "react";
 import { Empty, LoadError, Skeleton } from "../components/ui.tsx";
 
@@ -23,6 +24,14 @@ export function SearchPage({ onOpenPoi }: { onOpenPoi: (id: number) => void }) {
     enabled: true,
   });
   const items = q.data?.items ?? [];
+  // 分类中文名（/api/v1/categories optional 可读；code→name 展示映射）
+  const catsQ = useQuery({
+    queryKey: ["categories"],
+    queryFn: () => apiFetch<{ items: Array<{ code: string; name: string }> }>("/api/v1/categories?venue_id=1"),
+    staleTime: 300_000,
+  });
+  const catName = (code?: string) =>
+    catsQ.data?.items.find((c) => c.code === code)?.name ?? "";
   return (
     <div>
       <form className="flex gap-2 p-3"
@@ -48,10 +57,15 @@ export function SearchPage({ onOpenPoi }: { onOpenPoi: (id: number) => void }) {
             <button onClick={() => onOpenPoi(p.id)}
               className="flex w-full items-center justify-between rounded-xl bg-white p-3 text-left shadow-sm">
               <div>
-                <div className="text-sm font-semibold">{p.name}</div>
-                <div className="text-xs text-slate-500">
-                  {p.floor ?? ""} {p.floor ? "层" : ""}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold">{p.name}</span>
+                  {p.floor && (
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] text-white ${floorPillClass(p.floor)}`}>
+                      {p.floor}
+                    </span>
+                  )}
                 </div>
+                <div className="text-xs text-muted">{catName(p.category_code)}</div>
               </div>
               <span className="text-slate-300">›</span>
             </button>

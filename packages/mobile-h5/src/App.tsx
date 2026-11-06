@@ -7,11 +7,12 @@ import { PoiDetailPage } from "./pages/PoiDetail.tsx";
 import { RoutePage } from "./pages/Route.tsx";
 import { SearchPage } from "./pages/Search.tsx";
 import { navTo, parseHash, type MobilePage } from "./lib/router.ts";
+import { IconChat, IconSearch, IconTicket } from "@sage/map-render/src/lib/icons.tsx";
 
-const TABS: Array<{ page: MobilePage; label: string; icon: string }> = [
-  { page: { page: "search" }, label: "找店", icon: "🔍" },
-  { page: { page: "chat" }, label: "问一问", icon: "💬" },
-  { page: { page: "coupons" }, label: "优惠", icon: "🎫" },
+const TABS: Array<{ page: MobilePage; label: string; Icon: (p: { className?: string }) => React.JSX.Element }> = [
+  { page: { page: "search" }, label: "找店", Icon: IconSearch },
+  { page: { page: "chat" }, label: "问一问", Icon: IconChat },
+  { page: { page: "coupons" }, label: "优惠", Icon: IconTicket },
 ];
 
 export function App() {
@@ -42,8 +43,8 @@ export function App() {
         {TABS.map((t) => (
           <button key={t.label} onClick={() => nav(t.page)}
             className={`flex flex-1 flex-col items-center py-2 text-xs
-                        ${route.page === t.page.page ? "text-sky-600" : "text-slate-500"}`}>
-            <span className="text-lg leading-6">{t.icon}</span>
+                        ${route.page === t.page.page ? "text-accent-deep" : "text-muted"}`}>
+            <t.Icon className="size-5" />
             {t.label}
           </button>
         ))}
