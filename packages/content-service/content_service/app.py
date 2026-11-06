@@ -10,9 +10,11 @@ python -m uvicorn content_service.app:make_app --factory --port 8945
 from __future__ import annotations
 
 import datetime as dt
+import logging
 import os
 from typing import Literal
 
+import httpx
 import psycopg
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from platform_core.auth_router import (
@@ -24,6 +26,8 @@ from platform_core.auth_router import (
 from platform_core.events import track
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger("content_service")
 
 WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 
@@ -885,6 +889,24 @@ def create_app(dsn: str) -> FastAPI:
         return {"id": row[0], "venue_id": row[1], "poi_id": row[2], "doc_type": row[3],
                 "title": row[4], "content": row[5], "status": row[6], "version": row[7]}
 
+    def _notify_reembed(doc_id: int, tenant_id: int) -> None:
+        """M6：知识文档落库后触发 knowledge-rag 增量重嵌；失败不阻断编辑
+        （文档已保存可重试；记 warning 含 doc_id 供排查，非静默吞异常）。"""
+        client = getattr(app.state, "http_knowledge", None)
+        if client is None:
+            base = os.environ.get("SVC_KNOWLEDGE_RAG", "http://127.0.0.1:8943")
+            client = httpx.Client(base_url=base, timeout=8)
+            app.state.http_knowledge = client
+        try:
+            r = client.post("/knowledge/ingest",
+                            json={"tenant_id": tenant_id, "document_ids": [doc_id]})
+            if r.json().get("error_code"):
+                logger.warning("重嵌返回业务错误 doc_id=%s resp=%s",
+                               doc_id, r.text[:200])
+        except Exception:
+            logger.warning("重嵌触发失败（不阻断编辑）doc_id=%s", doc_id,
+                           exc_info=True)
+
     @app.post("/api/v1/knowledge-documents")
     def doc_create(body: DocCreate,
                    ctx: AuthContext = Depends(runtime.dependency(
@@ -898,6 +920,7 @@ def create_app(dsn: str) -> FastAPI:
              body.title, body.content))[0]
         runtime.oplog(ctx.tenant_id, ctx.user_id, "create", "knowledge_document",
                       did, ctx.trace_id, ctx.ip)
+        _notify_reembed(did, ctx.tenant_id)
         return {"id": did, "version": 1}
 
     @app.patch("/api/v1/knowledge-documents/{doc_id}")
@@ -927,6 +950,7 @@ def create_app(dsn: str) -> FastAPI:
             conn.commit()
         runtime.oplog(ctx.tenant_id, ctx.user_id, "update", "knowledge_document",
                       doc_id, ctx.trace_id, ctx.ip)
+        _notify_reembed(doc_id, ctx.tenant_id)
         return {"id": doc_id, "version": version}
 
     @app.delete("/api/v1/knowledge-documents/{doc_id}")

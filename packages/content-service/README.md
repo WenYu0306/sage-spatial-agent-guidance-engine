@@ -18,7 +18,7 @@ tenant/venue/merchant，服务层注入过滤（PRD 2.2），merchant 锚点语�
 - `GET/POST/PATCH/DELETE /api/v1/pois`、`GET /pois/{id}`、`POST /pois/{id}/publish`
 - `GET/POST/PATCH /api/v1/activities`、`POST /activities/{id}/publish`
 - `GET /api/v1/coupons`、`POST /coupons/{id}/claim`（guest 无需登录，anonymous_id 必填）
-- `GET/POST/PATCH/DELETE /api/v1/knowledge-documents`
+- `GET/POST/PATCH/DELETE /api/v1/knowledge-documents`（POST/PATCH 自动触发 knowledge-rag 增量重嵌 M6；触发失败不阻断编辑；DELETE 级联清 chunks）
 - 错误码：401/1001、403/1003、409/4001（状态）、4002（已领完）
 - `python -m uvicorn content_service.app:make_app --factory --port 8945`
 
