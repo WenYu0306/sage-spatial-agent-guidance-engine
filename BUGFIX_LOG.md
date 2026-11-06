@@ -41,3 +41,4 @@
 | 2026-11-06 | 容器内 LLM 调用全 400（全量降级 3001） | .env.demo 模板用幽灵变量 LLM_MODEL——代码读 LLM_CHAT_MODEL，默认值不在 API 支持列表 | A | 容器内 openai SDK 复现 400 | 模板换真名+真值并补 EMBED_DIM |
 | 2026-11-06 | 静态底图全 404 | compose 挂载 ../maps 相对 deploy/ 解析为仓库根/maps（不存在→空目录），应为 ./maps | A | nginx 容器内 ls 挂载目录为空 | compose.demo.yml 挂载路径修正 |
 | 2026-11-06 | deploy.sh 一启动即崩（SHA\xef unbound） | macOS bash 3.2 把 $VAR 紧跟的全角括号首字节吞进变量名；[[ ]] 引号段+glob 混合模式尾部 * 被转义 | B | bash deploy.sh / 匹配单测分别复现 | $VAR 紧贴 CJK 处加花括号；匹配改 grep -qF |
+| 2026-11-06 | D-029 后 seed 断言连锁假红（扶梯 18 条/venues=2/floors=6） | seed 计数与路网测试按"单场地库"全表查询，第二验收场地并存即漂移 | B | 本地全量测试暴露（CI 全新库不触发） | count_rows 场地域表按演示场地口径；graph fixture 钉场地 |

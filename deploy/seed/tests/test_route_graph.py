@@ -24,16 +24,22 @@ def seed_mod():
 def graph(seed_mod):
     seed_mod.run_seed()
     with psycopg.connect(seed_mod._dsn()) as conn, conn.cursor() as cur:
-        cur.execute("select id, floor_id, node_type, poi_id, accessible, x, y from route_nodes")
+        # D-029 后库内可有第二验收场地（mall_navigation_v1）：全部断言钉 seed 场地
+        cur.execute("select id from venues where name='山雀里·栖云广场'")
+        vid = cur.fetchone()[0]
+        cur.execute(
+            "select n.id, n.floor_id, n.node_type, n.poi_id, n.accessible, n.x, n.y "
+            "from route_nodes n where n.floor_id in "
+            "(select id from floors where venue_id=%s)", (vid,))
         nodes = {r[0]: {"floor": r[1], "type": r[2], "poi": r[3], "acc": r[4],
                         "x": float(r[5]), "y": float(r[6])}
                  for r in cur.fetchall()}
         cur.execute(
             "select from_node_id, to_node_id, edge_type, weight, accessible, "
-            "is_bidirectional, distance_meter from route_edges"
-        )
+            "is_bidirectional, distance_meter from route_edges where venue_id=%s",
+            (vid,))
         edges = cur.fetchall()
-        cur.execute("select id, name from floors")
+        cur.execute("select id, name from floors where venue_id=%s", (vid,))
         floor_names = dict(cur.fetchall())
     return nodes, edges, floor_names
 

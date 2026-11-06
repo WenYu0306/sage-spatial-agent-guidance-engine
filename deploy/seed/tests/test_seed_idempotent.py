@@ -31,7 +31,7 @@ def test_seed_twice_same_counts(seed_mod):
 def test_identity_and_space_scale(seed_mod):
     counts = seed_mod.run_seed()
     assert counts["tenants"] == 1, "demo 只演示 1 家租户（ARCHITECTURE 2.4）"
-    assert counts["venues"] == 1
+    assert counts["venues"] == 1, "演示场地恰 1（count_rows 场地域表按演示场地口径，D-029）"
     assert counts["floors"] == 3, "B1/F1/F2 三层"
     assert counts["map_layers"] == 3
     assert counts["users"] == 4, "M1 演示账号 3 个 + M11 设备身份 1 个（screen-f1-01）"

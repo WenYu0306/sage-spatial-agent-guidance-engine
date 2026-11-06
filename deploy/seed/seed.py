@@ -575,13 +575,32 @@ def run_seed(dsn: str | None = None) -> dict[str, int]:
     return count_rows(dsn or _dsn())
 
 
+VENUE_SCOPED_TABLES = (
+    "venues", "floors", "map_layers", "pois", "activities", "coupons",
+    "knowledge_documents", "route_nodes", "route_edges",
+)
+
+
 def count_rows(dsn: str | None = None) -> dict[str, int]:
+    """各表行数。D-029 后库内可有多场地（换场景验收场地并存）：场地域表按
+    演示场地口径计数，租户域表保持全库——seed 断言语义不随验收场地漂移。"""
     dsn = dsn or _dsn()
     counts: dict[str, int] = {}
+    venue_name = (yaml.safe_load(
+        (DATA_DIR / "tenant_venue.yaml").read_text(encoding="utf-8"))
+        ["venue"]["name"])
     with psycopg.connect(dsn) as conn:
         with conn.cursor() as cur:
+            cur.execute("select id from venues where name=%s", (venue_name,))
+            row = cur.fetchone()
+            vid = row[0] if row else None
             for t in COUNT_TABLES:
-                cur.execute(f'select count(*) from "{t}"')  # noqa: S608 表名来自常量白名单
+                if t in VENUE_SCOPED_TABLES and vid is not None:
+                    col = "id" if t == "venues" else "venue_id"
+                    cur.execute(f'select count(*) from "{t}" where {col}=%s',  # noqa: S608 白名单
+                                (vid,))
+                else:
+                    cur.execute(f'select count(*) from "{t}"')  # noqa: S608 表名来自常量白名单
                 counts[t] = cur.fetchone()[0]
     return counts
 
