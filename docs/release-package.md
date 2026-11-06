@@ -25,7 +25,9 @@
 | 项 | 值 |
 | :-- | :-- |
 | 仓库（公开） | https://github.com/WenYu0306/sage-spatial-agent-guidance-engine |
-| 公网 demo | https://sage.westwardecho.com （后台 /admin/，演示口令线下提供，不入库不入聊天） |
+| 公网大屏（核心体验） | https://sage.westwardecho.com/screen/ （免配置直接用） |
+| 公网运营后台 | https://sage.westwardecho.com/admin/ （演示口令线下提供） |
+| 公网手机落地 | 大屏问答→发到手机→扫码，落地于 /m/route/{id}（公网全链路） |
 | 根 README | 仓库首页（架构图 + 硬数字 + 模块地图） |
 | 难点解析 ×3 | docs/highlights/ |
 | 演示视频 | ≤2 分钟（docs/video-script.md 为分镜与录制判据） |
@@ -35,4 +37,5 @@
 
 - 技术栈关键词（对齐平台检索）：LangGraph · FastAPI · pgvector/RAG · React/TS · Docker · 微服务 · 多租户
 - 面试可直接讲的三个故事：跨步骤惰性求值（被评测掩盖两周的缺陷）、体检抓孤岛（换场景的静默降级）、锁定窗口 1 秒（审查抓到的把戏级 bug）
-- 展示优先级：公网 demo 现场操作 > 视频 > 亮点文档 > 代码走读
+- 展示优先级：公网大屏现场操作（/screen/ 问一句+扫码接力）> 视频 > 亮点文档 > 代码走读
+- 演示视频（113s，furrow 主题）已按 docs/video-script.md 录制完成
