@@ -79,7 +79,7 @@ make migrate && make seed     # 建表 + 灌演示商场（山雀里·栖云广�
 make ingest                   # 知识文档向量化（无 LLM key 时自动 Mock 嵌入）
 make test                     # 296 pytest + 47 node:test
 python scripts/run_agent_eval.py        # 30 条评测基线
-bash scripts/scene_check.py             # 换场景八项体检
+python3 scripts/scene_check.py         # 换场景八项体检
 ```
 
 单模块独立运行（每个模块不依赖兄弟服务可起）：`cd packages/<module> && make demo`（前端 `pnpm demo`）。
@@ -115,7 +115,7 @@ bash scripts/scene_check.py             # 换场景八项体检
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — 分层架构、模块契约、错误码总表
 - [PRD.md](PRD.md) — 功能编号 F-xx、数据模型、验收标准、评测问句
-- [DECISIONS.md](DECISIONS.md) — 29 条技术决策（D-029 换场景架构在此）
+- [DECISIONS.md](DECISIONS.md) — 28 条技术决策记录（D-027 底图、D-029 换场景架构在此）
 - [REUSE.md](REUSE.md) — 依赖选型台账（最小陌生面原则）
 - [ASSUMPTIONS.md](ASSUMPTIONS.md) — demo 简化假设 A1-A16 与转生产条件
 - [BUGFIX_LOG.md](BUGFIX_LOG.md) — 缺陷台账（现象/根因/复现测试/修复位置）
