@@ -27,7 +27,7 @@ jobs:
     env:
       DATABASE_URL: postgresql+psycopg://sage:sage@localhost:5432/sage
       REDIS_URL: redis://localhost:6379/0
-      JWT_SECRET: ci-only-jwt-secret
+      JWT_SECRET: ci-only-jwt-secret-0123456789abcdef  # ≥32 字符，满足 C11 守卫
       SEED_DEMO_ADMIN_PASSWORD: ci-demo-password
     steps:
       - uses: actions/checkout@v4
