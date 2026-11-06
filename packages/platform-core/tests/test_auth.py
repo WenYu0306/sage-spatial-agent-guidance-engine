@@ -162,6 +162,17 @@ def test_lockout_after_max_failures(dsn, lock_user):
     assert is_locked(row)
 
 
+def test_lockout_window_matches_policy(dsn, lock_user):
+    """审查 A3：interval 字面量内 %s 变 $1 不绑定，锁定窗口曾恒 1 秒（形同虚设）。"""
+    for _ in range(POLICY.max_attempts):
+        register_failure(dsn, lock_user, POLICY)
+    row = _user_row(dsn, lock_user)
+    assert row[2] is not None
+    remain = row[2].timestamp() - time.time()
+    assert remain >= POLICY.window_seconds - 60, (
+        f"锁定窗口应≈{POLICY.window_seconds}s，实测仅剩 {remain:.1f}s")
+
+
 def test_success_resets_counter(dsn, lock_user):
     register_failure(dsn, lock_user, POLICY)
     register_failure(dsn, lock_user, POLICY)

@@ -180,8 +180,11 @@ def register_failure(dsn: str, user_id: int, policy: LockoutPolicy) -> None:
             "update users set failed_logins = failed_logins + 1 where id=%s", (user_id,))
         cur.execute("select failed_logins from users where id=%s", (user_id,))
         if cur.fetchone()[0] >= policy.max_attempts:
+            # make_interval 而非 interval '%s seconds'（审查 A3）：psycopg 会把
+            # 字面量里的 %s 转成 $1 占位符文本，Postgres 将其解析为 1 秒——
+            # 锁定窗口与配置无关，形同虚设。
             cur.execute(
-                "update users set locked_until = now() + interval '%s seconds' "
+                "update users set locked_until = now() + make_interval(secs => %s) "
                 "where id=%s", (policy.window_seconds, user_id))
 
 
