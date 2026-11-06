@@ -1,4 +1,4 @@
-/** 大屏线性图标（U1-c）：自绘 24px stroke，无图标库依赖（D-023 复制式原则）。 */
+/** 线性图标与楼层色带（U1-c/U1-f）：自绘 24px stroke，无图标库依赖；大屏/手机共用。 */
 
 function base(props: { className?: string }) {
   return {
@@ -69,4 +69,22 @@ export function floorPillClass(floor: string | null | undefined): string {
     default:
       return "bg-floor-f1";
   }
+}
+
+export function IconSearch(props: { className?: string }) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="11" cy="11" r="6" />
+      <path d="M20 20l-4.2-4.2" />
+    </svg>
+  );
+}
+
+export function IconTicket(props: { className?: string }) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4 8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2a2 2 0 0 0 0-4V8Z" />
+      <path d="M13 6v2M13 11v2M13 16v2" />
+    </svg>
+  );
 }
