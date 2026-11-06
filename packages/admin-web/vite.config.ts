@@ -3,7 +3,9 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
 // M8 content-service（auth+内容端点，8945）；demo 单模块独立：代理走环境变量可换
+// base：部署在 nginx /admin/ 路径下（Dockerfile.admin 注入 VITE_BASE）；本地 dev 保持 /
 export default defineConfig({
+  base: process.env.VITE_BASE ?? "/",
   plugins: [react(), tailwindcss()],
   server: {
     port: 5191,

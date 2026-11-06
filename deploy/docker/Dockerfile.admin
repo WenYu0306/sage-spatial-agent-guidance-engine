@@ -13,6 +13,8 @@ COPY packages/map-render/package.json packages/map-render/
 RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY packages/admin-web packages/admin-web
 COPY packages/map-render packages/map-render
+# 部署挂在 nginx /admin/ 路径下：资源前缀 /admin/assets/（本地 dev 走 / 不受影响）
+ENV VITE_BASE=/admin/
 RUN pnpm --filter @sage/admin-web build
 
 FROM ${REGISTRY}nginx:1.27-alpine AS runtime
