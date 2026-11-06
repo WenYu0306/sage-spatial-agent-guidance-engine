@@ -1,0 +1,48 @@
+# knowledge-rag（8943）M0 契约：RAG 检索 + M6 增量重嵌。
+# 内网 ops 端点无鉴权（ASSUMPTIONS A6）；业务错误 HTTP 200 + error_code（M0 风格）。
+paths:
+  /health:
+    get:
+      summary: 存活探针
+      responses:
+        "200": { description: "{ ok: true }" }
+  /knowledge/retrieve:
+    post:
+      summary: 知识检索（切片向量召回 → 重排 → 阈值过滤 Top5，带出处）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id, venue_id, query]
+              properties:
+                tenant_id: { type: integer }
+                venue_id: { type: integer }
+                query: { type: string }
+                threshold: { type: number, nullable: true }
+      responses:
+        "200": { description: "{ items: [{document_id, title, content, score, rerank_score, source}] }" }
+  /knowledge/ingest:
+    post:
+      summary: 重嵌知识文档（M6）：缺省全 venue active 全量；带 document_ids 增量（先删后插单事务）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenant_id]
+              properties:
+                tenant_id: { type: integer }
+                venue_id: { type: integer, nullable: true, description: "全量时必填，缺失 422" }
+                document_ids:
+                  type: array
+                  items: { type: integer }
+                  nullable: true
+                  description: "增量模式：只重嵌这些文档"
+      responses:
+        "200": { description: "{ documents, chunks, deleted }（deleted=先删后插的旧块总数，gross）" }
+        "200 (error)":
+          description: "业务错误：{ error_code: 4004, message, unknown }（文档不存在/越权不可见）"
+        "422": { description: 全量模式缺 venue_id }

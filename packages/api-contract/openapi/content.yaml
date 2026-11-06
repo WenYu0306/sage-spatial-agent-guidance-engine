@@ -59,7 +59,7 @@ paths:
         "200": { description: "{ id?, coupon_id, duplicate }；售罄 200+error_code=4002" }
   /api/v1/knowledge-documents:
     post:
-      summary: 创建知识文档（venue_admin/venue_editor；重嵌入走 M6 增量端点，后续任务）
+      summary: 创建知识文档（venue_admin/venue_editor；创建即触发 knowledge-rag 增量重嵌 M6）
       responses:
         "200": { description: "{ id, version }" }
         "403": { description: 1003 merchant 无权 }

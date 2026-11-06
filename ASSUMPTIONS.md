@@ -17,7 +17,7 @@
 
 | # | 假设 | 为什么 demo 可接受 | 转生产条件 |
 | :-- | :-- | :-- | :-- |
-| A6 | 运维/内部端点（`/api/v1/agent/sessions/{id}/trace`、`/api/v1/agent/stats`）**无鉴权** | demo 内网使用，只读统计 | 必须挂网关鉴权或运维 token；trace 含会话数据，不可公网裸奔 |
+| A6 | 运维/内部端点（`/api/v1/agent/sessions/{id}/trace`、`/api/v1/agent/stats`、`/knowledge/ingest`、`/knowledge/retrieve`）**无鉴权** | demo 内网使用，只读统计 | 必须挂网关鉴权或运维 token；trace 含会话数据，不可公网裸奔 |
 | A7 | 幻觉后置校验是**名单法**：回答中的店名必须出现在工具结果里，否则整条降级为列表卡片 | 店名级编造是最高频幻觉；列表降级保证不出错信息 | 数字/价格/时间类编造不在覆盖内；可叠加 NLI 类校验或结构化字段输出 |
 | A8 | 底图渲染**双轨**：前端用 map-render 内嵌 SVG 资产（floors.ts），`map_layers.svg_url` 走 /static/maps 供契约消费方 | demo 前端打包内嵌最可靠；上传通道（脚本剥离）已就绪 | 定版后统一走 svg_url + 版本化 CDN；两轨必须指向同一份资产 |
 | A9 | SVG 上传做了脚本剥离（`<script>`/`javascript:`/事件属性），但**未做** schema 级白名单校验 | 人工上传、来源可控 | 开放第三方上传时补 schema 白名单与文件大小/尺寸上限 |
