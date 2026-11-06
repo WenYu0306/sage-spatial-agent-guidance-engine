@@ -55,3 +55,4 @@
 | 2026-11-06 | 部署回滚静默空转 | SAGE_TAG 先于 git pull 计算，回滚点与当前同 tag | A | git 沙箱实测（pull 后 HEAD + 显式覆盖） | deploy.sh tag 移到 pull 后 |
 | 2026-11-06 | trace/stats/recommend-rank 公网裸奔；限流塌缩全局单桶；JWT 公开示例值可签发 | nginx 暴露面过宽 + client.host 代理失真 + .env.example 公开密钥 | A | test_auth.py client_ip/_secret 两用例 + nginx -t | admin.conf 收敛+XFF；client_ip()；_secret() 守卫；A6 状态更新 |
 | 2026-11-06 | seed 活动恒处状态机外 published 态（guest 修复后暴露为列表恒空） | seed.py 沿用 S-1 词汇误套，插值超出 ACT_TRANSITIONS 枚举 | B | test_tools.py::test_promotion_list（数量断言对共享库） | seed.py 活动 upsert 两处 status='active' + dev 库一次性 UPDATE |
+| 2026-11-06 | 知识检索三测试突红（文档批次零代码改动） | D-029 双场地并存 + 测试夹具 fetchone() 无排序，行序漂移后取到无 chunk 的第二场地（8b4b4da 同类残留） | B | knowledge-rag tests 本地全量（CI 全新库不触发） | 两处夹具钉 v.name='山雀里·栖云广场' |

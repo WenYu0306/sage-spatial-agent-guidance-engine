@@ -11,7 +11,7 @@ from platform_core.llm import MockProvider, ProviderConfig, ProviderUnavailableE
 TENANT_SQL = "select id from tenants where code='shanqueli-demo'"
 VENUE_SQL = (
     "select v.id from venues v join tenants t on t.id=v.tenant_id "
-    "where t.code='shanqueli-demo'"
+    "where t.code='shanqueli-demo' and v.name='山雀里·栖云广场'"  # 钉演示场地（D-029 双场地并存）
 )
 
 
