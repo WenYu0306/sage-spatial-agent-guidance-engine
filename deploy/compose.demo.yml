@@ -55,6 +55,8 @@ services:
   content:
     <<: *backend-defaults
     command: uvicorn content_service.app:make_app --factory --host 0.0.0.0 --port 8945
+    environment:
+      SVC_KNOWLEDGE_RAG: http://knowledge-rag:8943  # M6 重嵌触发（缺省 127.0.0.1 在容器内指向自己）
     healthcheck: &hc
       test: ["CMD", "python", "-c", "import urllib.request as u;u.urlopen('http://127.0.0.1:8945/health',timeout=2)"]
       interval: 10s
@@ -103,6 +105,7 @@ services:
       SVC_ROUTE_ENGINE: http://route-engine:8942
       SVC_KNOWLEDGE_RAG: http://knowledge-rag:8943
       SVC_RECOMMENDER: http://recommender:8944
+      SVC_CONTENT: http://content:8945  # 工具的内容客户端（缺省 127.0.0.1 在容器内指向自己——公网冒烟实锤）
     healthcheck:
       <<: *hc
       test: ["CMD", "python", "-c", "import urllib.request as u;u.urlopen('http://127.0.0.1:8941/health',timeout=2)"]
