@@ -477,19 +477,16 @@ def create_app(dsn: str) -> FastAPI:
         有位置：同层优先+距离升序（热度破平）；无位置：按热度，不声称同层。
         guest 仅 published。
         """
+        # 审查 B5：场地须属于 token 租户且在 token 场地范围内——此前未比对
+        # （用场地自身租户当过滤条件，跨租户 venue_id 读穿）。
+        _venue_of_tenant(ctx, venue_id)
+        if not one("select 1 from venues where id=%s and status='active'", (venue_id,)):
+            raise HTTPException(status_code=401, detail="场地不存在或未开放")
         where = ["p.tenant_id=%s", "p.deleted_at is null", "p.status='published'"]
         params: list = [ctx.tenant_id]
-        vrow = one("select id, tenant_id from venues where id=%s and status='active'",
-                   (venue_id,))
-        if not vrow:
-            raise HTTPException(status_code=401, detail="场地不存在或未开放")
-        params = [vrow[1]]
-        where = ["p.tenant_id=%s", "p.deleted_at is null", "p.status='published'"]
         where.append("p.venue_id=%s")
         params.append(venue_id)
         expanded = _expand_category(ctx.tenant_id, category_code)
-        print(f"[nearest debug] tenant={ctx.tenant_id} venue={venue_id} "
-              f"expanded={expanded} roles={ctx.roles}")
         where.append("p.category_code = any(%s)")
         params.append(expanded)
         data = rows(
@@ -497,7 +494,6 @@ def create_app(dsn: str) -> FastAPI:
             "p.hot_score, f.name from pois p "
             "join floors f on f.id=p.floor_id where " + " and ".join(where),
             tuple(params))
-        print(f"[nearest debug] rows={len(data)}")
         has_position = x is not None and y is not None and floor_id is not None
         items = []
         for r in data:
@@ -694,7 +690,7 @@ def create_app(dsn: str) -> FastAPI:
             where.append("act_type=%s")
             params.append(act_type)
         if "guest" in ctx.roles:
-            where.append("status='published'")  # guest 只见已发布（M12，回归审计 S-1）
+            where.append("status='active'")  # guest 只见在线态（审查 B6：活动状态机无 published）
         elif status:
             where.append("status=%s")
             params.append(status)

@@ -93,6 +93,24 @@ def test_activities_list_filters_status(client, tokens, accounts, dsn):
         _cleanup_acts(dsn, [aid])
 
 
+def test_guest_sees_active_activities(client, tokens, accounts, dsn):
+    """审查 B6：活动状态机是 draft/pending/active/ended/archived，没有 published 态，
+    guest 过滤 status='published' 曾恒空（S-1 把 POI 词汇误套到活动）。"""
+    aid = _mk_activity(client, tokens, accounts, title="guest可见活动审查")
+    try:
+        h = _h(tokens["rbac_admin"])
+        client.post(f"/api/v1/activities/{aid}/publish", headers=h,
+                    json={"target": "pending"})
+        client.post(f"/api/v1/activities/{aid}/publish", headers=h,
+                    json={"target": "active"})
+        r = client.get("/api/v1/activities",
+                       params={"venue_id": accounts["vid"], "title": "guest可见活动审查"})
+        assert r.status_code == 200
+        assert [i["id"] for i in r.json()["items"]] == [aid], "guest 必须看到 active 活动"
+    finally:
+        _cleanup_acts(dsn, [aid])
+
+
 # ---------- 领券 ----------
 
 @pytest.fixture()

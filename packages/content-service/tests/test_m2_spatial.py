@@ -60,6 +60,33 @@ def test_pois_scene_tag_bidirectional(client):
     assert {"tags", "hot_score", "position_x", "position_y", "floor"} <= set(first)
 
 
+def test_pois_nearest_cross_tenant_venue_denied(client, tokens, dsn):
+    """审查 B5：nearest 曾用场地自身租户当过滤条件，跨租户 venue_id 读穿（红线违例）。"""
+    from platform_core.events import new_event_id
+
+    suffix = new_event_id()[:6]
+    with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+        cur.execute("insert into tenants (code, name) values (%s, %s) returning id",
+                    (f"audit_t{suffix}", f"审查租户{suffix}"))
+        tid = cur.fetchone()[0]
+        cur.execute(
+            "insert into venues (tenant_id, name, status) values (%s, %s, 'active') "
+            "returning id", (tid, f"审查场地{suffix}"))
+        vid = cur.fetchone()[0]
+        conn.commit()
+    try:
+        h = {"Authorization": f"Bearer {tokens['rbac_admin']}"}
+        r = client.get("/api/v1/pois/nearest", headers=h,
+                       params={"venue_id": vid, "category_code": "toilet"})
+        assert r.status_code == 403, f"跨租户场地必须 403，实测 {r.status_code}: {r.text}"
+        assert r.json().get("error_code") == 1003
+    finally:
+        with psycopg.connect(dsn) as conn, conn.cursor() as cur:
+            cur.execute("delete from venues where id=%s", (vid,))
+            cur.execute("delete from tenants where id=%s", (tid,))
+            conn.commit()
+
+
 def test_route_nodes_read_and_write(client, tokens, accounts, dsn):
     """路网读写 API（PRD 7.3）：venue_admin 可读写；按 poi_id 过滤供 M5 目标解析。"""
     h = {"Authorization": f"Bearer {tokens['rbac_admin']}"}
