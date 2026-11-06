@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import QRCode from "qrcode";
+import { describeSegment, routeTitle } from "@sage/map-render/src/lib/routeCopy.ts";
 import { floorPolylines } from "@sage/map-render/src/lib/routeDraw.ts";
 import type { RouteData } from "@sage/map-render/src/lib/routeDraw.ts";
 import { FloorPlan } from "@sage/map-render/src/poipicker/FloorPlan.tsx";
@@ -85,10 +86,7 @@ export function RoutePage({
           ← 返回首页
         </button>
         <div className="text-2xl font-semibold">
-          {route.start_label} → {route.goal_label}
-          <span className="ml-4 text-xl text-slate-400">
-            {route.total_distance_meter} 米 · 约{Math.round(route.total_time_s)} 秒
-          </span>
+          {routeTitle(route.start_label, route.goal_label, route.total_distance_meter, route.total_time_s)}
         </div>
         <button onClick={showQr}
           className="rounded-xl bg-emerald-600 px-8 py-3 text-2xl font-semibold hover:bg-emerald-500">
@@ -129,10 +127,7 @@ export function RoutePage({
                     style={{ color: LINE_COLOR[s.edge_type] ?? "#38bdf8" }}>
                     [{EDGE_LABEL[s.edge_type] ?? s.edge_type}]
                   </span>{" "}
-                  {a?.label}（{a?.floor}）→ {b?.label}（{b?.floor}）
-                  <div className="text-lg text-slate-400">
-                    {s.distance_meter} 米 · {Math.round(s.time_s)} 秒
-                  </div>
+                  {describeSegment(s, route.nodes)}
                 </li>
               );
             })}
