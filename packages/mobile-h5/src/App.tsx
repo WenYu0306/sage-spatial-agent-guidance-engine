@@ -6,7 +6,7 @@ import { CouponsPage } from "./pages/Coupons.tsx";
 import { PoiDetailPage } from "./pages/PoiDetail.tsx";
 import { RoutePage } from "./pages/Route.tsx";
 import { SearchPage } from "./pages/Search.tsx";
-import { navTo, parseHash, type MobilePage } from "./lib/router.ts";
+import { navTo, parseLanding, type MobilePage } from "./lib/router.ts";
 import { IconChat, IconSearch, IconTicket } from "@sage/map-render/src/lib/icons.tsx";
 
 const TABS: Array<{ page: MobilePage; label: string; Icon: (p: { className?: string }) => React.JSX.Element }> = [
@@ -16,10 +16,10 @@ const TABS: Array<{ page: MobilePage; label: string; Icon: (p: { className?: str
 ];
 
 export function App() {
-  const [route, setRoute] = useState<MobilePage>(() => parseHash(location.hash));
+  const [route, setRoute] = useState<MobilePage>(() => parseLanding(location.pathname, location.hash));
 
   useEffect(() => {
-    const onHash = () => setRoute(parseHash(location.hash));
+    const onHash = () => setRoute(parseLanding(location.pathname, location.hash));
     window.addEventListener("hashchange", onHash);
     return () => window.removeEventListener("hashchange", onHash);
   }, []);

@@ -135,6 +135,7 @@ services:
       dockerfile: deploy/docker/Dockerfile.admin
       args:
         REGISTRY: ${REGISTRY:-docker.m.daocloud.io/}
+        VITE_SCREEN_PASSWORD: ${VITE_SCREEN_PASSWORD:-}
     image: sage-nginx:${SAGE_TAG:-latest}
     restart: unless-stopped
     ports: ["${SAGE_HTTP:-127.0.0.1:8080}:80"]

@@ -22,3 +22,11 @@ test("anonymousId：同环境复用同一标识", () => {
   assert.equal(anonymousId(), anonymousId());
   assert.notEqual(anonymousId(), "");
 });
+
+test("U1 公网接力：/m/route/:id 路径形式落地到路线页（QR 无 hash）", async () => {
+  const { parseLanding } = await import("../src/lib/router.ts");
+  assert.deepEqual(parseLanding("/m/route/7", ""), { page: "route", id: 7 });
+  assert.deepEqual(parseLanding("/", "#/m/route/7"), { page: "route", id: 7 });
+  assert.deepEqual(parseLanding("/", "#/search"), { page: "search" });
+  assert.deepEqual(parseLanding("/m/route/7", "#/coupons"), { page: "coupons" }, "hash 优先于路径");
+});

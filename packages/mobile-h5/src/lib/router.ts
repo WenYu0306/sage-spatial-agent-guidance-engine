@@ -28,6 +28,12 @@ export function parseHash(hash: string): MobilePage {
   return { page: "search" };
 }
 
+/** 公网落地解析：QR 给的是路径形式 /m/route/:id（无 hash），hash 存在时优先（应用内导航语义）。 */
+export function parseLanding(pathname: string, hash: string): MobilePage {
+  if (hash && hash !== "#" && hash !== "#/") return parseHash(hash);
+  return parseHash(pathname);
+}
+
 export function navTo(page: MobilePage): string {
   switch (page.page) {
     case "route": return `#/m/route/${page.id}`;
