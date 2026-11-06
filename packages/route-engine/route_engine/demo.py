@@ -58,7 +58,11 @@ def main(argv: list[str]) -> int:
         print("用法：python -m route_engine.demo <起点POI名> <终点POI名>", file=sys.stderr)
         return 2
     start_name, goal_name = argv
-    nodes, edges, scale = load_route_graph(TENANT_CODE, VENUE_NAME)
+    try:
+        nodes, edges, scale = load_route_graph(TENANT_CODE, VENUE_NAME)
+    except RouteError as exc:
+        print(f"路网加载失败 code={exc.code}：{exc}", file=sys.stderr)
+        return 1
     g = build_graph(nodes, edges, scale_meter=scale)
     with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
         venue = _venue_id(cur)

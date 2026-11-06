@@ -49,3 +49,15 @@ def test_plan_unknown_node_is_business_error_2003():
     body = r.json()
     assert r.status_code == 200
     assert body["error_code"] == 2003, "业务错误以 200 + error_code 表达（M0 风格）"
+
+
+def test_plan_unknown_venue_is_business_error_2004():
+    """未知场地必须降级 2004（审查 A1）：db 层 SystemExit 会穿透 except Exception 打崩 worker。"""
+    r = client.post(
+        "/route/plan",
+        json={"tenant_code": "shanqueli-demo", "venue_name": "审查测试·不存在的场地",
+              "start_node_id": 1, "goal_node_id": 2},
+    )
+    body = r.json()
+    assert r.status_code == 200
+    assert body["error_code"] == 2004, "脏/未知场地以 200 + error_code 2004 降级（PRD 13.2）"

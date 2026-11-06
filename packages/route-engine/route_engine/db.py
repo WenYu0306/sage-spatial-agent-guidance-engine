@@ -6,7 +6,7 @@ import os
 
 import psycopg
 
-from .graph import EdgeRow, NodeRow
+from .graph import EdgeRow, NodeRow, RouteError
 
 
 def _dsn() -> str:
@@ -27,7 +27,9 @@ def load_route_graph(tenant_code: str, venue_name: str):
         )
         row = cur.fetchone()
         if not row:
-            raise SystemExit(f"未找到场地 {tenant_code}/{venue_name}")
+            # RouteError 而非 SystemExit（审查 A1）：BaseException 会穿透 HTTP 层的
+            # except Exception 打崩 worker；业务错误按 M0 风格由调用方降级 2004。
+            raise RouteError(2004, f"未找到场地 {tenant_code}/{venue_name}")
         venue_id, _tenant_id = row
 
         cur.execute(
@@ -55,6 +57,6 @@ def load_route_graph(tenant_code: str, venue_name: str):
         )
         scale_row = cur.fetchone()
         if not scale_row:
-            raise SystemExit(f"场地缺少 map_layers：{venue_name}")
+            raise RouteError(2004, f"场地缺少 map_layers：{venue_name}")
         scale = float(scale_row[0])
     return nodes, edges, scale
