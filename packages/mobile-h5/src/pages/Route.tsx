@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { floorPolylines } from "@sage/map-render/src/lib/routeDraw.ts";
+import { describeSegment, routeTitle } from "@sage/map-render/src/lib/routeCopy.ts";
 import type { RouteData } from "@sage/map-render/src/lib/routeDraw.ts";
 import { FloorPlan } from "@sage/map-render/src/poipicker/FloorPlan.tsx";
 import { apiFetch } from "@sage/map-render/src/lib/http/api.ts";
@@ -92,7 +93,7 @@ export function RoutePage({ routeId }: { routeId: number }) {
   const { lines } = floorPolylines(route, active);
   return (
     <div>
-      <TopBar title={`${route.start_label} → ${route.goal_label}`} />
+      <TopBar title={routeTitle(route.start_label, route.goal_label, payload.summary.distance_meter, payload.summary.eta_seconds)} />
       <div className="px-3 pt-3">
         <div className="rounded-xl bg-white p-2 shadow-sm">
           <FloorPlan floor={active} points={[]} overlay={overlayFor(route, active)} />
@@ -115,18 +116,13 @@ export function RoutePage({ routeId }: { routeId: number }) {
           )}
           <ol className="space-y-2">
             {route.segments.map((s, i) => {
-              const a = route.nodes[s.from];
-              const b = route.nodes[s.to];
               return (
                 <li key={i} className="rounded-xl bg-white p-3 text-sm shadow-sm">
                   <span className="font-semibold"
                     style={{ color: LINE_COLOR[s.edge_type] ?? "#2563eb" }}>
                     [{s.edge_type === "walk" ? "步行" : s.edge_type === "elevator" ? "直梯" : "扶梯"}]
                   </span>{" "}
-                  {a?.label} → {b?.label}
-                  <div className="text-xs text-slate-500">
-                    {s.distance_meter} 米 · {Math.round(s.time_s)} 秒
-                  </div>
+                  {describeSegment(s, route.nodes)}
                 </li>
               );
             })}
