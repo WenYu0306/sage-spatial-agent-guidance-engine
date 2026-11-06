@@ -90,7 +90,7 @@ def _node_labels(tenant_code: str, venue_name: str, node_ids: list[int]) -> dict
     dsn = os.environ["DATABASE_URL"].replace("postgresql+psycopg://", "postgresql://", 1)
     with psycopg.connect(dsn) as conn, conn.cursor() as cur:
         cur.execute(
-            "select n.id, coalesce(p.name, '走廊点(' || n.x::text || ',' || n.y::text || ')'), "
+            "select n.id, coalesce(p.name, '沿走廊'), "
             "f.name, n.x, n.y from route_nodes n "
             "join floors f on f.id = n.floor_id "
             "join venues v on v.id = n.venue_id "

@@ -42,7 +42,7 @@ def _resolve_poi_node(cur, venue_id: int, name: str) -> int:
 
 def _node_label(cur, node_id: int) -> str:
     cur.execute(
-        "select coalesce(p.name, '走廊点(' || rn.x::text || ',' || rn.y::text || ')'), "
+        "select coalesce(p.name, '沿走廊'), "
         "f.name from route_nodes rn "
         "join floors f on f.id = rn.floor_id "
         "left join pois p on p.id = rn.poi_id "
