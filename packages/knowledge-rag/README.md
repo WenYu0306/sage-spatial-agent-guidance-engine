@@ -8,7 +8,8 @@
 
 - `knowledge_rag.provider`：`make_provider()`（有 `LLM_API_KEY` 用真实 OpenAI 兼容 Provider，无 key 落 `MockProvider` 确定性向量）、`DailyLimitError`/`ProviderUnavailableError`
 - `knowledge_rag.chunking`：`estimate_tokens` / `split_into_chunks`（纯函数）
-- `knowledge_rag.ingest`：`ingest_venue(venue_name, tenant_code)` — 切片+批量向量化+幂等 upsert，返回 `{documents, chunks}`
+- `knowledge_rag.ingest`：`ingest_venue(venue_name, tenant_code)` — 切片+批量向量化+幂等 upsert，返回 `{documents, chunks}`；`ingest_documents(doc_ids|None, tenant_id, venue_id)` — M6 增量重嵌（先删后插单事务；None=按租户+场地全量 active；`UnknownDocuments`→4004）
+- HTTP（8943）：`POST /knowledge/retrieve`（检索）；`POST /knowledge/ingest`（全量 `{tenant_id, venue_id}` / 增量 `+document_ids`，业务错误 200+4004，契约见 api-contract/openapi/knowledge.yaml）
 - `knowledge_rag.retrieval`：`retrieve(tenant_id, venue_id, query, threshold=None)` → `list[RetrievedChunk{document_id, title, content, score, rerank_score, source}]`
 
 ## 如何单独运行
