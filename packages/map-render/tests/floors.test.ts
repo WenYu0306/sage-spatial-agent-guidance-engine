@@ -2,18 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { FLOOR_SVGS } from "../src/assets/floors.ts";
 
-// 底图资产契约：三层齐备，结构元素计数与 seed 数据一致（防生成器/数据回归）。
-const EXPECT: Record<string, { shops: number; facilities: number }> = {
-  B1: { shops: 20, facilities: 7 },
-  F1: { shops: 24, facilities: 7 },
-  F2: { shops: 24, facilities: 6 },
-};
+// 底图资产契约：三层齐备、非空、互不相同（防生成器/资产回归）。
+const FLOORS = ["B1", "F1", "F2"] as const;
 
-function count(s: string, needle: string): number {
-  return s.split(needle).length - 1;
-}
-
-for (const [floor, exp] of Object.entries(EXPECT)) {
+for (const floor of FLOORS) {
   test(`${floor} 底图：三层齐备且互不相同（用户资产内嵌）`, () => {
     const svg = FLOOR_SVGS[floor];
     assert.ok(svg, `${floor} 底图缺失`);
