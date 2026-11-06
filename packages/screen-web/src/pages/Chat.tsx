@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { KioskShell } from "../components/ui.tsx";
+import { floorPillClass, IconStore } from "../components/icons.tsx";
 import type { DeviceIdentity } from "../lib/device.ts";
 import { createSSEParser } from "@sage/map-render/src/lib/http/sse.ts";
 import type { RoutePayload } from "../lib/route.ts";
@@ -209,17 +210,32 @@ export function Chat({
                     ? "max-w-[70%] rounded-2xl rounded-br-md bg-accent px-6 py-4 text-2xl text-ink"
                     : "max-w-[80%] rounded-2xl rounded-bl-md border border-rule bg-paper-2 px-6 py-4 text-2xl shadow-card"
                 }>
-                  <div className="whitespace-pre-wrap">{m.text}</div>
+                  <div className="whitespace-pre-wrap">
+                    {m.text}
+                    {phase === "streaming" && i === messages.length - 1 && (
+                      <span className="ml-0.5 animate-pulse text-accent-deep">▍</span>
+                    )}
+                  </div>
                 </div>
                 {m.cards && m.cards.length > 0 && (
                   <div className="flex max-w-full gap-4 overflow-x-auto pb-2">
                     {m.cards.map((c) => (
                       <div key={c.poi_id}
-                        className="min-w-64 rounded-card border border-rule bg-paper-2 p-4 shadow-card">
-                        <div className="text-2xl font-semibold text-ink">{c.name}</div>
+                        className="flex min-w-64 gap-3 rounded-card border border-rule bg-paper-2 p-4 shadow-card">
+                        <span className="flex size-14 shrink-0 items-center justify-center rounded-xl bg-paper-3 text-ink-2">
+                          <IconStore className="size-8" />
+                        </span>
+                        <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-2xl font-semibold text-ink">{c.name}</span>
+                          {c.floor && (
+                            <span className={`rounded-md px-2 py-0.5 text-base text-white ${floorPillClass(c.floor)}`}>
+                              {c.floor}
+                            </span>
+                          )}
+                        </div>
                         <div className="mt-1 text-xl text-muted">
-                          {c.floor ?? ""}层
-                          {c.distance_meter != null && ` · ${c.distance_meter}米`}
+                          {c.distance_meter != null && `${c.distance_meter}米`}
                           {c.eta_seconds != null && ` · 约${Math.round(c.eta_seconds)}秒`}
                         </div>
                         {c.reasons && c.reasons.length > 0 && (
@@ -235,6 +251,7 @@ export function Chat({
                         {c.coupon && (
                           <div className="mt-2 text-xl font-medium text-accent-deep">券 · {c.coupon.title}</div>
                         )}
+                        </div>
                       </div>
                     ))}
                   </div>
