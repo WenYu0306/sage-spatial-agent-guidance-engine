@@ -216,7 +216,7 @@ def create_app(dsn: str) -> FastAPI:
         data = rows(
             f"select {bucket} as b, count(*) from events e where {where} "
             "and e.event_type in ('ai_query','search','poi_view') group by b order by b",
-            tuple(params))
+            tuple([tzname] + params))  # 审查 A2：bucket 含 tz 占位，此前漏传恒 500
         return {"points": [{"date": str(r[0]), "value": r[1]} for r in data]}
 
     @app.get("/api/v1/metrics/merchant/{poi_id}")

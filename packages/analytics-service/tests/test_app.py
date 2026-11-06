@@ -138,6 +138,17 @@ def test_metric_code_timeseries_day_and_hour(client, tokens, seeded_events):
     assert hour["points"]
 
 
+def test_traffic_by_hour_timeseries_both_grains(client, tokens, seeded_events):
+    """审查 A2：traffic_by_hour 分桶 SQL 含 tz 占位但参数漏传 tzname，曾两粒度恒 500。"""
+    h = _h(tokens["rbac_admin"])
+    for grain in ("day", "hour"):
+        r = client.get("/api/v1/metrics/traffic_by_hour", headers=h,
+                       params={"granularity": grain})
+        assert r.status_code == 200, f"{grain} 粒度不应 500"
+        body = r.json()
+        assert all("date" in p and "value" in p for p in body["points"])
+
+
 def test_all_eleven_metric_codes_registered(client, tokens):
     r = client.get("/api/v1/metrics/codes", headers=_h(tokens["rbac_admin"]))
     assert set(r.json()["codes"]) == set(METRICS)
