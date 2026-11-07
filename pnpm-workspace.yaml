@@ -2,3 +2,6 @@ packages:
   - "packages/*"
 onlyBuiltDependencies:
   - esbuild
+
+# 供应链冷却：新版本发布满 1 天才允许安装（审计 P1-3）
+minimumReleaseAge: 1440
