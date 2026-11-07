@@ -20,7 +20,7 @@ dev = [
     "ruff>=0.13",
     "import-linter>=2.3",
     "alembic>=1.14",
-    "psycopg[binary]>=3.2",
+    "psycopg[binary]>=3.3.7",
     "bcrypt>=4.2",
     "pytest-cov>=7.1",
 ]
