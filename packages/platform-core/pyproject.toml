@@ -5,7 +5,7 @@ description = "M1 多租户/RBAC/配置/日志trace/事件总线/埋点SDK（占
 requires-python = ">=3.12"
 dependencies = [
     "bcrypt>=4.2",
-    "psycopg[binary]>=3.2",
+    "psycopg[binary]>=3.3.7",
     "pyjwt>=2.9",
     "redis>=5.2",
 ]
