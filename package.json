@@ -7,7 +7,7 @@
     "test": "pnpm -r --if-present test"
   },
   "devDependencies": {
-    "eslint": "^9.39.0",
+    "eslint": "^10.14.0",
     "eslint-plugin-boundaries": "^5.0.1",
     "typescript-eslint": "^8.0.0",
     "json-schema-to-typescript": "^15.0.4"
