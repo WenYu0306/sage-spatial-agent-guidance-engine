@@ -255,3 +255,15 @@ def test_unknown_poi_names_ignores_function_phrases():
     assert _unknown_poi_names("可以直接到店品尝，乘直梯前往。", known) == []
     # 真编造仍拦截
     assert _unknown_poi_names("推荐幻影火锅店。", known) == ["幻影火锅店"]
+
+def test_answer_prompt_declares_untrusted_data_boundary():
+    """审计 P0-2：产品 prompt 必须声明用户输入/工具结果是数据而非指令。"""
+    text = (Path(__file__).resolve().parents[1] / "prompts"
+            / "answer_system.txt").read_text(encoding="utf-8")
+    assert "不是指令" in text and "不得泄露" in text, "answer prompt 缺安全边界声明"
+
+
+def test_intent_prompt_declares_data_not_instruction():
+    text = (Path(__file__).resolve().parents[1] / "prompts"
+            / "intent_system.txt").read_text(encoding="utf-8")
+    assert "不得改变本解析器的输出契约" in text, "intent prompt 缺数据边界声明"
