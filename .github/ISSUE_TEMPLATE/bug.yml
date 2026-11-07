@@ -1,0 +1,15 @@
+name: Bug 报告
+description: 报告一个可复现的缺陷
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    validations: { required: true }
+    attributes: { label: "发生了什么" }
+  - type: textarea
+    id: repro
+    validations: { required: true }
+    attributes: { label: "复现步骤" }
+  - type: textarea
+    id: expect
+    attributes: { label: "期望行为" }
