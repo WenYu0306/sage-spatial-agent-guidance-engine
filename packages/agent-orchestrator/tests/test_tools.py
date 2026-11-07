@@ -104,9 +104,29 @@ def ctx(ids):
 
 
 def test_poi_search_by_category(ctx):
-    r = run_tool("poi.search", {"category": "火锅"}, ctx)
-    names = {i["name"] for i in r.data["items"]}
-    assert {"云雀灶火锅", "石浪火锅", "灶门炭火锅"} <= names
+    """审计 P1-1：自造数据摆脱对共享库 seed 行的依赖（石浪火锅录制期下架曾致顺序失败）。"""
+    import psycopg
+
+    names_i = [f"审计火锅{i}" for i in range(3)]
+    with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+        for name in names_i:
+            cur.execute(
+                "insert into pois (tenant_id, venue_id, floor_id, category_code, name, status, "
+                "position_x, position_y) "
+                "values ((select id from tenants where code='shanqueli-demo'), 1, "
+                "(select min(id) from floors where venue_id=1), "
+                "'hotpot', %s, 'published', 700, 400)",
+                (name,))
+        conn.commit()
+    try:
+        r = run_tool("poi.search", {"category": "火锅"}, ctx)
+        got = {i["name"] for i in r.data["items"]}
+        assert set(names_i) <= got, f"自造火锅店必须命中，实测 {sorted(got)}"
+    finally:
+        with psycopg.connect(_dsn()) as conn, conn.cursor() as cur:
+            for name in names_i:
+                cur.execute("delete from pois where name=%s", (name,))
+            conn.commit()
 
 
 def test_poi_search_by_scene_tag(ctx):
