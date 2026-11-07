@@ -30,7 +30,7 @@ jobs:
       JWT_SECRET: ci-only-jwt-secret-0123456789abcdef  # ≥32 字符，满足 C11 守卫
       SEED_DEMO_ADMIN_PASSWORD: ci-demo-password
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v5
         with:
           enable-cache: true
@@ -59,7 +59,7 @@ jobs:
   frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v4
         with:
           version: 11.2.2
